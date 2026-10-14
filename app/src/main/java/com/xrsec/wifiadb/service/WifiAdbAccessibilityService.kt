@@ -19,7 +19,7 @@ class WifiAdbAccessibilityService : AccessibilityService() {
          * 静态检查系统无障碍列表中是否开启了当前辅助服务。
          */
         fun isServiceEnabled(context: Context): Boolean {
-            val expectedComponent = ComponentName(context, WifiAdbAccessibilityService::class.java).flattenToString()
+            val expectedComponent = ComponentName(context, WifiAdbAccessibilityService::class.java)
             val enabledServices = Settings.Secure.getString(
                 context.contentResolver,
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
@@ -28,8 +28,12 @@ class WifiAdbAccessibilityService : AccessibilityService() {
             val colonSplitter = TextUtils.SimpleStringSplitter(':')
             colonSplitter.setString(enabledServices)
             while (colonSplitter.hasNext()) {
-                val componentName = colonSplitter.next()
-                if (componentName.equals(expectedComponent, ignoreCase = true)) {
+                val componentStr = colonSplitter.next()
+                val enabledComponent = ComponentName.unflattenFromString(componentStr)
+                if (enabledComponent != null &&
+                    enabledComponent.packageName == expectedComponent.packageName &&
+                    enabledComponent.className == expectedComponent.className
+                ) {
                     return true
                 }
             }

@@ -1,22 +1,23 @@
 package com.xrsec.wifiadb
 
 import android.app.Activity
-import android.content.BroadcastReceiver
+import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.InputType
+import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.xrsec.wifiadb.core.AdbController
-import com.xrsec.wifiadb.core.ShellUtils
 import com.xrsec.wifiadb.service.AdbWirelessService
 import com.xrsec.wifiadb.service.WifiAdbAccessibilityService
 import com.xrsec.wifiadb.service.WifiStateReceiver
@@ -25,37 +26,44 @@ import com.xrsec.wifiadb.util.LocaleHelper
 import com.xrsec.wifiadb.util.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : Activity() {
 
+    // 顶部导航
     private lateinit var btnSettings: ImageButton
     private lateinit var btnAbout: ImageButton
-    private lateinit var tvWifiSsid: TextView
-    private lateinit var tvIpAddress: TextView
-    private lateinit var tvSectionAdbTitle: TextView
+
+    // 卡片一：系统权限
+    private lateinit var tvPermissionStatus: TextView
+    private lateinit var tvPermissionDesc: TextView
+    private lateinit var btnGrantPermission: Button
+
+    // 卡片二：无线调试
     private lateinit var tvAdbStatus: TextView
-    private lateinit var tvRootStatus: TextView
-    private lateinit var btnToggleAdb: Button
+    private lateinit var tvWifiName: TextView
+    private lateinit var tvIpPort: TextView
+    private lateinit var layoutCommandBox: View
     private lateinit var tvCommand: TextView
-    private lateinit var btnCopyCommand: Button
-    private lateinit var tvAccessibilityStatus: TextView
-    private lateinit var btnOpenAccessibility: Button
+    private lateinit var btnConfigAdb: Button
+    private lateinit var switchAdb: Switch
+
+    // 卡片三：无障碍服务
+    private lateinit var tvA11yStatus: TextView
+    private lateinit var btnConfigA11y: Button
+    private lateinit var switchA11y: Switch
+
+    // 底部刷新
     private lateinit var btnRefresh: Button
 
-    private val activityScope = CoroutineScope(Dispatchers.Main + Job())
-    private var isAdbActive: Boolean = false
-    private var isRootGranted: Boolean = false
+    // 采用 SupervisorJob 防止子协程异常扩散导致生命周期协程作用域失效
+    private val activityScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var currentIp: String? = null
-
-    private val networkReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            refreshNetworkStatus()
-        }
-    }
+    private var currentPermType: AdbController.PermissionType = AdbController.PermissionType.NONE
+    private var isUpdatingUi = false
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleHelper.wrap(newBase))
@@ -71,16 +79,11 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // 仅注册统一内存回调，避免与系统广播接收器重复并发执行网络探测
         WifiStateReceiver.listener = { _, _, _ ->
             runOnUiThread {
-                refreshNetworkStatus()
+                refreshNetworkAndAdbInfo()
             }
-        }
-        val filter = IntentFilter(WifiStateReceiver.ACTION_NETWORK_STATE_CHANGED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(networkReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(networkReceiver, filter)
         }
         refreshAll()
     }
@@ -88,9 +91,6 @@ class MainActivity : Activity() {
     override fun onPause() {
         super.onPause()
         WifiStateReceiver.listener = null
-        try {
-            unregisterReceiver(networkReceiver)
-        } catch (_: Throwable) {}
     }
 
     override fun onDestroy() {
@@ -101,16 +101,26 @@ class MainActivity : Activity() {
     private fun initViews() {
         btnSettings = findViewById(R.id.btn_settings)
         btnAbout = findViewById(R.id.btn_about)
-        tvWifiSsid = findViewById(R.id.tv_wifi_ssid)
-        tvIpAddress = findViewById(R.id.tv_ip_address)
-        tvSectionAdbTitle = findViewById(R.id.tv_section_adb_title)
+
+        // 卡片一
+        tvPermissionStatus = findViewById(R.id.tv_permission_status)
+        tvPermissionDesc = findViewById(R.id.tv_permission_desc)
+        btnGrantPermission = findViewById(R.id.btn_grant_permission)
+
+        // 卡片二
         tvAdbStatus = findViewById(R.id.tv_adb_status)
-        tvRootStatus = findViewById(R.id.tv_root_status)
-        btnToggleAdb = findViewById(R.id.btn_toggle_adb)
+        tvWifiName = findViewById(R.id.tv_wifi_name)
+        tvIpPort = findViewById(R.id.tv_ip_port)
+        layoutCommandBox = findViewById(R.id.layout_command_box)
         tvCommand = findViewById(R.id.tv_command)
-        btnCopyCommand = findViewById(R.id.btn_copy_command)
-        tvAccessibilityStatus = findViewById(R.id.tv_accessibility_status)
-        btnOpenAccessibility = findViewById(R.id.btn_open_accessibility)
+        btnConfigAdb = findViewById(R.id.btn_config_adb)
+        switchAdb = findViewById(R.id.switch_adb)
+
+        // 卡片三
+        tvA11yStatus = findViewById(R.id.tv_a11y_status)
+        btnConfigA11y = findViewById(R.id.btn_config_a11y)
+        switchA11y = findViewById(R.id.switch_a11y)
+
         btnRefresh = findViewById(R.id.btn_refresh)
     }
 
@@ -123,16 +133,35 @@ class MainActivity : Activity() {
             startActivity(Intent(this, AboutActivity::class.java))
         }
 
-        btnToggleAdb.setOnClickListener {
-            toggleAdbWireless()
+        // 卡片一：点击授权
+        btnGrantPermission.setOnClickListener {
+            handleGrantPermission()
         }
 
-        btnCopyCommand.setOnClickListener {
+        // 卡片二：配置端口与开关
+        btnConfigAdb.setOnClickListener {
+            showPortConfigDialog()
+        }
+
+        layoutCommandBox.setOnClickListener {
             copyAdbCommand()
         }
 
-        btnOpenAccessibility.setOnClickListener {
-            openAccessibilitySettings()
+        switchAdb.setOnCheckedChangeListener { _, isChecked ->
+            if (!isUpdatingUi) {
+                toggleAdbWireless(isChecked)
+            }
+        }
+
+        // 卡片三：配置与无障碍开关
+        btnConfigA11y.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
+        switchA11y.setOnCheckedChangeListener { _, isChecked ->
+            if (!isUpdatingUi) {
+                toggleAccessibilityService(isChecked)
+            }
         }
 
         btnRefresh.setOnClickListener {
@@ -142,16 +171,94 @@ class MainActivity : Activity() {
     }
 
     private fun refreshAll() {
-        val configuredPort = AppPreferences.getPort(this)
-        tvSectionAdbTitle.text = getString(R.string.section_adb_title, configuredPort)
-
-        refreshNetworkStatus()
+        refreshPermissionStatus()
+        refreshNetworkAndAdbInfo()
         refreshAccessibilityStatus()
-        refreshRootAndAdbStatus(configuredPort)
     }
 
-    private fun refreshNetworkStatus() {
+    // ==========================================
+    // 卡片一：系统权限逻辑
+    // ==========================================
+    private fun refreshPermissionStatus() {
+        activityScope.launch {
+            val permType = withContext(Dispatchers.IO) {
+                AdbController.checkSystemPermission(this@MainActivity)
+            }
+            currentPermType = permType
+
+            when (permType) {
+                AdbController.PermissionType.ROOT -> {
+                    tvPermissionStatus.text = getString(R.string.status_permission_root)
+                    tvPermissionStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_green))
+                    tvPermissionDesc.text = getString(R.string.desc_permission_granted)
+                    btnGrantPermission.text = getString(R.string.btn_permission_granted_root)
+                    btnGrantPermission.isEnabled = true
+                }
+                AdbController.PermissionType.SECURE_SETTINGS -> {
+                    tvPermissionStatus.text = getString(R.string.status_permission_secure)
+                    tvPermissionStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_green))
+                    tvPermissionDesc.text = getString(R.string.desc_permission_granted)
+                    btnGrantPermission.text = getString(R.string.btn_try_get_root)
+                    btnGrantPermission.isEnabled = true
+                }
+                AdbController.PermissionType.NONE -> {
+                    tvPermissionStatus.text = getString(R.string.status_permission_none)
+                    tvPermissionStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_red))
+                    tvPermissionDesc.text = getString(R.string.desc_permission_none)
+                    btnGrantPermission.text = getString(R.string.btn_grant_permission)
+                    btnGrantPermission.isEnabled = true
+                }
+            }
+        }
+    }
+
+    private fun handleGrantPermission() {
+        btnGrantPermission.isEnabled = false
+        btnGrantPermission.text = getString(R.string.btn_checking_permission)
+
+        activityScope.launch {
+            val rootSuccess = withContext(Dispatchers.IO) {
+                AdbController.requestRootPermission(this@MainActivity)
+            }
+
+            if (rootSuccess) {
+                Toast.makeText(this@MainActivity, getString(R.string.toast_root_success), Toast.LENGTH_SHORT).show()
+                refreshAll()
+            } else {
+                val perm = withContext(Dispatchers.IO) {
+                    AdbController.checkSystemPermission(this@MainActivity)
+                }
+                if (perm == AdbController.PermissionType.SECURE_SETTINGS) {
+                    Toast.makeText(this@MainActivity, getString(R.string.toast_has_secure_settings), Toast.LENGTH_SHORT).show()
+                    refreshAll()
+                } else {
+                    showPermissionGuideDialog()
+                    refreshAll()
+                }
+            }
+        }
+    }
+
+    private fun showPermissionGuideDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.dialog_permission_guide_title)
+            .setMessage(R.string.dialog_permission_guide_msg)
+            .setPositiveButton(R.string.btn_copy_grant_cmd) { _, _ ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                val clip = ClipData.newPlainText("ADB Grant Command", getString(R.string.grant_cmd_text))
+                clipboard?.setPrimaryClip(clip)
+                Toast.makeText(this, getString(R.string.toast_grant_cmd_copied), Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    // ==========================================
+    // 卡片二：无线调试逻辑
+    // ==========================================
+    private fun refreshNetworkAndAdbInfo() {
         val configuredPort = AppPreferences.getPort(this)
+
         activityScope.launch {
             val (ip, ssid) = withContext(Dispatchers.IO) {
                 Pair(
@@ -160,8 +267,21 @@ class MainActivity : Activity() {
                 )
             }
             currentIp = ip
-            tvWifiSsid.text = if (ssid.isNotBlank()) ssid else getString(R.string.text_not_connected)
-            tvIpAddress.text = ip ?: getString(R.string.text_unknown_ip)
+            val isAdbActive = withContext(Dispatchers.IO) {
+                AdbController.isAdbWirelessActive(configuredPort)
+            }
+
+            tvWifiName.text = if (ssid.isNotBlank()) {
+                getString(R.string.label_wifi_name, ssid)
+            } else {
+                getString(R.string.text_not_connected)
+            }
+
+            tvIpPort.text = getString(
+                R.string.label_ip_port,
+                ip ?: getString(R.string.text_unknown_ip),
+                configuredPort
+            )
 
             val commandText = if (!ip.isNullOrBlank()) {
                 NetworkUtils.formatAdbConnectCommand(ip, configuredPort)
@@ -169,85 +289,78 @@ class MainActivity : Activity() {
                 "adb connect 192.168.x.x:$configuredPort"
             }
             tvCommand.text = commandText
-        }
-    }
 
-    private fun refreshAccessibilityStatus() {
-        val isA11yActive = WifiAdbAccessibilityService.isServiceEnabled(this)
-        if (isA11yActive) {
-            tvAccessibilityStatus.text = getString(R.string.status_accessibility_enabled)
-            tvAccessibilityStatus.setTextColor(ContextCompat.getColor(this, R.color.status_green))
-        } else {
-            tvAccessibilityStatus.text = getString(R.string.status_accessibility_disabled)
-            tvAccessibilityStatus.setTextColor(ContextCompat.getColor(this, R.color.status_gray))
-        }
-    }
-
-    private fun refreshRootAndAdbStatus(port: Int) {
-        activityScope.launch {
-            val rootAvailable = withContext(Dispatchers.IO) {
-                ShellUtils.isRootAvailable()
-            }
-            val adbActive = withContext(Dispatchers.IO) {
-                AdbController.isAdbWirelessActive(port)
-            }
-
-            isRootGranted = rootAvailable
-            isAdbActive = adbActive
-
-            // 更新 Root 显示
-            if (rootAvailable) {
-                tvRootStatus.text = getString(R.string.status_root_granted)
-                tvRootStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_green))
-            } else {
-                tvRootStatus.text = getString(R.string.status_root_denied)
-                tvRootStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_red))
-            }
-
-            // 更新 ADB 状态与切换按钮
-            if (adbActive) {
-                tvAdbStatus.text = getString(R.string.status_adb_running, port)
+            isUpdatingUi = true
+            if (isAdbActive) {
+                tvAdbStatus.text = getString(R.string.status_adb_active)
                 tvAdbStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_green))
-                btnToggleAdb.text = getString(R.string.btn_stop_adb)
-                btnToggleAdb.setBackgroundResource(R.drawable.bg_button_danger)
+                switchAdb.isChecked = true
             } else {
-                tvAdbStatus.text = getString(R.string.status_adb_stopped)
+                tvAdbStatus.text = getString(R.string.status_adb_inactive)
                 tvAdbStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_gray))
-                btnToggleAdb.text = getString(R.string.btn_start_adb)
-                btnToggleAdb.setBackgroundResource(R.drawable.bg_button_primary)
+                switchAdb.isChecked = false
             }
+            isUpdatingUi = false
         }
     }
 
-    private fun toggleAdbWireless() {
+    private fun showPortConfigDialog() {
+        val currentPort = AppPreferences.getPort(this)
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            setText(currentPort.toString())
+            setSelection(text.length)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.dialog_port_title)
+            .setView(input)
+            .setPositiveButton(R.string.btn_confirm) { _, _ ->
+                val portStr = input.text.toString().trim()
+                val newPort = portStr.toIntOrNull()
+                if (newPort == null || newPort < 1024 || newPort > 65535) {
+                    Toast.makeText(this, getString(R.string.toast_port_invalid), Toast.LENGTH_SHORT).show()
+                } else {
+                    AppPreferences.setPort(this, newPort)
+                    Toast.makeText(this, getString(R.string.toast_settings_saved), Toast.LENGTH_SHORT).show()
+                    refreshNetworkAndAdbInfo()
+                }
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    private fun toggleAdbWireless(enable: Boolean) {
         val configuredPort = AppPreferences.getPort(this)
 
-        if (!isRootGranted && !isAdbActive) {
+        if (currentPermType != AdbController.PermissionType.ROOT && enable) {
             Toast.makeText(this, getString(R.string.toast_root_required), Toast.LENGTH_LONG).show()
         }
 
-        btnToggleAdb.isEnabled = false
-        btnToggleAdb.text = getString(R.string.btn_operating)
+        // 异步操作期间临时禁用 Switch 控件，防止连续快速点击造成多 Root Shell 竞态
+        switchAdb.isEnabled = false
 
         activityScope.launch {
-            if (isAdbActive) {
-                val success = AdbController.stopWirelessAdb()
-                if (success) {
-                    Toast.makeText(this@MainActivity, getString(R.string.toast_adb_stopped), Toast.LENGTH_SHORT).show()
-                    AdbWirelessService.start(this@MainActivity, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
-                }
-            } else {
-                val success = AdbController.startWirelessAdb(configuredPort)
-                if (success) {
-                    Toast.makeText(this@MainActivity, getString(R.string.toast_adb_started, configuredPort), Toast.LENGTH_SHORT).show()
-                    AdbWirelessService.start(this@MainActivity, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
+            try {
+                if (enable) {
+                    val success = AdbController.startWirelessAdb(configuredPort)
+                    if (success) {
+                        Toast.makeText(this@MainActivity, getString(R.string.toast_adb_started, configuredPort), Toast.LENGTH_SHORT).show()
+                        AdbWirelessService.start(this@MainActivity, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
+                    } else {
+                        Toast.makeText(this@MainActivity, getString(R.string.toast_adb_start_failed), Toast.LENGTH_LONG).show()
+                    }
                 } else {
-                    Toast.makeText(this@MainActivity, getString(R.string.toast_adb_start_failed), Toast.LENGTH_LONG).show()
+                    val success = AdbController.stopWirelessAdb(configuredPort)
+                    if (success) {
+                        Toast.makeText(this@MainActivity, getString(R.string.toast_adb_stopped), Toast.LENGTH_SHORT).show()
+                        AdbWirelessService.start(this@MainActivity, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
+                    }
                 }
+                refreshNetworkAndAdbInfo()
+            } finally {
+                switchAdb.isEnabled = true
             }
-
-            btnToggleAdb.isEnabled = true
-            refreshAll()
         }
     }
 
@@ -268,8 +381,56 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun openAccessibilitySettings() {
+    // ==========================================
+    // 卡片三：无障碍服务逻辑
+    // ==========================================
+    private fun refreshAccessibilityStatus() {
+        val isA11yActive = WifiAdbAccessibilityService.isServiceEnabled(this)
+        isUpdatingUi = true
+        if (isA11yActive) {
+            tvA11yStatus.text = getString(R.string.status_a11y_active)
+            tvA11yStatus.setTextColor(ContextCompat.getColor(this, R.color.status_green))
+            switchA11y.isChecked = true
+        } else {
+            tvA11yStatus.text = getString(R.string.status_a11y_inactive)
+            tvA11yStatus.setTextColor(ContextCompat.getColor(this, R.color.status_gray))
+            switchA11y.isChecked = false
+        }
+        isUpdatingUi = false
+    }
+
+    private fun toggleAccessibilityService(enable: Boolean) {
+        // 异步切换期间临时禁用 Switch 控件，防止连续点击竞态
+        switchA11y.isEnabled = false
+
+        activityScope.launch {
+            try {
+                val perm = withContext(Dispatchers.IO) {
+                    AdbController.checkSystemPermission(this@MainActivity)
+                }
+
+                if (perm == AdbController.PermissionType.ROOT || perm == AdbController.PermissionType.SECURE_SETTINGS) {
+                    val success = AdbController.setAccessibilityServiceSilent(this@MainActivity, enable)
+                    if (success) {
+                        Toast.makeText(this@MainActivity, getString(R.string.toast_a11y_silent_success), Toast.LENGTH_SHORT).show()
+                        refreshAccessibilityStatus()
+                    } else {
+                        navigateToAccessibilitySettings()
+                        // 跳转设置时不在此处同步刷新，完全交给 onResume() 恢复，杜绝 Switch 视觉瞬弹
+                    }
+                } else {
+                    navigateToAccessibilitySettings()
+                    // 跳转设置时不在此处同步刷新，完全交给 onResume() 恢复，杜绝 Switch 视觉瞬弹
+                }
+            } finally {
+                switchA11y.isEnabled = true
+            }
+        }
+    }
+
+    private fun navigateToAccessibilitySettings() {
         try {
+            Toast.makeText(this, getString(R.string.toast_a11y_jump_settings), Toast.LENGTH_SHORT).show()
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             startActivity(intent)
         } catch (_: Throwable) {

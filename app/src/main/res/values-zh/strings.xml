@@ -8,26 +8,51 @@
     <string name="btn_about">关于</string>
     <string name="btn_back">返回</string>
 
-    <!-- 网络状态区域 -->
-    <string name="section_network_title">当前网络环境</string>
-    <string name="label_wifi_ssid">WiFi 名称 (SSID):</string>
-    <string name="label_device_ip">设备 IP 地址:</string>
+    <!-- 卡片一：系统权限授权 -->
+    <string name="card_permission_title">系统权限</string>
+    <string name="status_permission_none">未授权</string>
+    <string name="status_permission_root">已授权 (Root)</string>
+    <string name="status_permission_secure">已授权 (ADB/系统设置)</string>
+    <string name="desc_permission_none">需要 Root 权限或 ADB 授权以执行后台 setprop 切换及静默启闭服务。</string>
+    <string name="desc_permission_granted">已成功获取底层系统权限，已解锁全部高阶静默与调试功能。</string>
+    <string name="btn_grant_permission">点击授权</string>
+    <string name="btn_permission_granted_root">已授权 (Root)</string>
+    <string name="btn_try_get_root">尝试获取 Root</string>
+    <string name="btn_checking_permission">正在检测授权...</string>
+    <string name="toast_has_secure_settings">未获取到 Root 权限，但具备系统设置权限</string>
+    <string name="dialog_permission_guide_title">系统权限获取指导</string>
+    <string name="dialog_permission_guide_msg">开启无线调试及静默控制无障碍需要系统提权。请通过 Root 管理器（如 Magisk、KernelSU、APatch）为本应用授予 Root 权限；或者在电脑端执行以下 ADB 命令提权：\n\nadb shell pm grant com.xrsec.wifiadb android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="btn_copy_grant_cmd">复制命令</string>
+    <string name="grant_cmd_text">adb shell pm grant com.xrsec.wifiadb android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="toast_grant_cmd_copied">已复制 ADB 提权命令到剪贴板</string>
+    <string name="toast_root_success">Root 权限检测通过并完成提权！</string>
+
+    <!-- 卡片二：无线调试 -->
+    <string name="card_adb_title">无线调试</string>
+    <string name="status_adb_active">运行中</string>
+    <string name="status_adb_inactive">未启动</string>
+    <string name="label_ip_port">IP与端口: %1$s:%2$d</string>
+    <string name="label_wifi_name">WiFi: %s</string>
     <string name="text_not_connected">未连接 WiFi</string>
     <string name="text_unknown_ip">--.--.--.--</string>
+    <string name="btn_config">配置</string>
+    <string name="btn_copy_tag">[复制]</string>
+    <string name="dialog_port_title">修改无线调试端口</string>
+    <string name="dialog_port_hint">端口号 (1024 - 65535)</string>
+    <string name="btn_confirm">确定</string>
+    <string name="btn_cancel">取消</string>
 
-    <!-- ADB 调试状态区域 -->
-    <string name="section_adb_title">无线调试 (端口 %d)</string>
-    <string name="label_adb_status">调试服务状态:</string>
-    <string name="status_adb_running">端口 %d 已开启 (正在监听)</string>
-    <string name="status_adb_stopped">已关闭 (USB 模式)</string>
-    <string name="label_root_status">Root 权限:</string>
-    <string name="status_root_granted">已获取 Root 权限</string>
-    <string name="status_root_denied">未检测到 Root 权限</string>
-    <string name="btn_start_adb">开启无线调试</string>
-    <string name="btn_stop_adb">关闭无线调试</string>
-    <string name="btn_operating">正在执行操作...</string>
-    <string name="label_connect_command">连接命令:</string>
-    <string name="btn_copy_command">复制</string>
+    <!-- 卡片三：无障碍服务 -->
+    <string name="card_accessibility_title">无障碍服务</string>
+    <string name="status_a11y_active">已启用 (自动确认弹窗)</string>
+    <string name="status_a11y_inactive">未启用</string>
+    <string name="desc_a11y_intro">自动检测 RSA 密钥指纹弹窗，自动勾选“一律允许”并点击确认。</string>
+    <string name="accessibility_service_description">WiFi ADB 无障碍辅助服务，在连接新电脑调试时自动确认并允许调试授权弹窗。</string>
+    <string name="toast_a11y_silent_success">无障碍服务已静默切换</string>
+    <string name="toast_a11y_jump_settings">正在跳转至系统无障碍设置...</string>
+
+    <!-- 底部操作 -->
+    <string name="btn_refresh">刷新状态</string>
 
     <!-- 提示消息 -->
     <string name="toast_copied">已复制连接命令到剪贴板</string>
@@ -40,17 +65,6 @@
     <string name="toast_cannot_open_accessibility">无法打开系统无障碍设置页面</string>
     <string name="toast_port_invalid">请输入 1024 至 65535 之间的有效端口号</string>
     <string name="toast_settings_saved">设置已保存</string>
-
-    <!-- 无障碍服务 -->
-    <string name="section_accessibility_title">无障碍授权助手</string>
-    <string name="label_accessibility_status">无障碍辅助状态:</string>
-    <string name="status_accessibility_enabled">已开启 (自动处理调试授权弹窗)</string>
-    <string name="status_accessibility_disabled">未开启</string>
-    <string name="btn_open_accessibility">前往开启无障碍服务</string>
-    <string name="accessibility_service_description">WiFi ADB 无障碍辅助服务，在连接新电脑调试时自动确认并允许调试授权弹窗。</string>
-
-    <!-- 底部操作 -->
-    <string name="btn_refresh">刷新状态</string>
 
     <!-- 前台服务通知 -->
     <string name="notification_channel_name">WiFi ADB 运行状态</string>

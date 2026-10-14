@@ -62,7 +62,9 @@
                 android:src="@drawable/ic_info" />
         </LinearLayout>
 
-        <!-- Card 1: Network Information -->
+        <!-- ============================================== -->
+        <!-- 卡片一：系统权限授权 (System Permission) -->
+        <!-- ============================================== -->
         <LinearLayout
             style="@style/CardStyle"
             android:layout_width="match_parent"
@@ -70,65 +72,52 @@
             android:layout_marginBottom="12dp"
             android:orientation="vertical">
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/SectionTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:paddingBottom="0dp"
+                    android:text="@string/card_permission_title" />
+
+                <TextView
+                    android:id="@+id/tv_permission_status"
+                    style="@style/ValueText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/status_permission_none"
+                    android:textColor="@color/status_red" />
+            </LinearLayout>
+
             <TextView
-                style="@style/SectionTitle"
+                android:id="@+id/tv_permission_desc"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/section_network_title" />
+                android:paddingTop="8dp"
+                android:paddingBottom="12dp"
+                android:text="@string/desc_permission_none"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
 
-            <LinearLayout
+            <Button
+                android:id="@+id/btn_grant_permission"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp">
-
-                <TextView
-                    style="@style/LabelText"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/label_wifi_ssid" />
-
-                <TextView
-                    android:id="@+id/tv_wifi_ssid"
-                    style="@style/ValueText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/text_not_connected" />
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="4dp"
-                android:background="@color/border_color" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp">
-
-                <TextView
-                    style="@style/LabelText"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/label_device_ip" />
-
-                <TextView
-                    android:id="@+id/tv_ip_address"
-                    style="@style/ValueText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/text_unknown_ip" />
-            </LinearLayout>
+                android:layout_height="40dp"
+                android:background="@drawable/bg_button_outline"
+                android:text="@string/btn_grant_permission"
+                android:textColor="@color/primary"
+                android:textSize="14sp" />
         </LinearLayout>
 
-        <!-- Card 2: Wireless Debugging (Configured Port) -->
+        <!-- ============================================== -->
+        <!-- 卡片二：无线调试 (Wireless Debugging) -->
+        <!-- ============================================== -->
         <LinearLayout
             style="@style/CardStyle"
             android:layout_width="match_parent"
@@ -136,83 +125,59 @@
             android:layout_marginBottom="12dp"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tv_section_adb_title"
-                style="@style/SectionTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Wireless Debugging (Port 5555)" />
-
-            <!-- ADB Status Row -->
+            <!-- Card Header: Title & Status -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
-                    style="@style/LabelText"
+                    style="@style/SectionTitle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/label_adb_status" />
+                    android:paddingBottom="0dp"
+                    android:text="@string/card_adb_title" />
 
                 <TextView
                     android:id="@+id/tv_adb_status"
                     style="@style/ValueText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/status_adb_stopped"
+                    android:text="@string/status_adb_inactive"
                     android:textColor="@color/status_gray" />
             </LinearLayout>
 
-            <!-- Root Status Row -->
+            <!-- Network Info Rows -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingTop="4dp"
+                android:orientation="vertical"
+                android:paddingTop="8dp"
                 android:paddingBottom="8dp">
 
                 <TextView
-                    style="@style/LabelText"
-                    android:layout_width="0dp"
+                    android:id="@+id/tv_wifi_name"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/label_root_status" />
+                    android:text="@string/text_not_connected"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
 
                 <TextView
-                    android:id="@+id/tv_root_status"
-                    style="@style/ValueText"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/tv_ip_port"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/status_root_denied"
-                    android:textColor="@color/status_red" />
+                    android:paddingTop="2dp"
+                    android:text="IP: --.--.--.--:5555"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Toggle ADB Button -->
-            <Button
-                android:id="@+id/btn_toggle_adb"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="6dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_button_primary"
-                android:text="@string/btn_start_adb"
-                android:textColor="#FFFFFF"
-                android:textSize="15sp" />
-
-            <!-- Command Block -->
-            <TextView
-                style="@style/LabelText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingTop="8dp"
-                android:paddingBottom="4dp"
-                android:text="@string/label_connect_command" />
-
+            <!-- Clickable Command Box -->
             <LinearLayout
+                android:id="@+id/layout_command_box"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_command"
@@ -230,81 +195,126 @@
                     android:textColor="@color/command_text"
                     android:textSize="13sp" />
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="@string/btn_copy_tag"
+                    android:textColor="@color/primary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Action Area: Config & Switch -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="12dp">
+
                 <Button
-                    android:id="@+id/btn_copy_command"
+                    android:id="@+id/btn_config_adb"
                     android:layout_width="wrap_content"
                     android:layout_height="36dp"
-                    android:layout_marginStart="8dp"
                     android:background="@drawable/bg_button_outline"
-                    android:minWidth="72dp"
-                    android:text="@string/btn_copy_command"
+                    android:minWidth="64dp"
+                    android:text="@string/btn_config"
                     android:textColor="@color/primary"
-                    android:textSize="12sp" />
+                    android:textSize="13sp" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <Switch
+                    android:id="@+id/switch_adb"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:switchMinWidth="56dp" />
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Card 3: Accessibility Helper -->
+        <!-- ============================================== -->
+        <!-- 卡片三：无障碍服务 (Accessibility Service) -->
+        <!-- ============================================== -->
         <LinearLayout
             style="@style/CardStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="16dp"
             android:orientation="vertical">
 
-            <TextView
-                style="@style/SectionTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/section_accessibility_title" />
-
+            <!-- Card Header: Title & Status -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingTop="4dp"
-                android:paddingBottom="6dp">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
                 <TextView
-                    style="@style/LabelText"
+                    style="@style/SectionTitle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/label_accessibility_status" />
+                    android:paddingBottom="0dp"
+                    android:text="@string/card_accessibility_title" />
 
                 <TextView
-                    android:id="@+id/tv_accessibility_status"
+                    android:id="@+id/tv_a11y_status"
                     style="@style/ValueText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/status_accessibility_disabled"
+                    android:text="@string/status_a11y_inactive"
                     android:textColor="@color/status_gray" />
             </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingTop="2dp"
+                android:paddingTop="8dp"
                 android:paddingBottom="8dp"
-                android:text="@string/accessibility_service_description"
-                android:textColor="@color/text_tertiary"
-                android:textSize="12sp" />
+                android:text="@string/desc_a11y_intro"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
 
-            <Button
-                android:id="@+id/btn_open_accessibility"
+            <!-- Action Area: Config & Switch -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_button_outline"
-                android:text="@string/btn_open_accessibility"
-                android:textColor="@color/primary"
-                android:textSize="14sp" />
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="4dp">
+
+                <Button
+                    android:id="@+id/btn_config_a11y"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_button_outline"
+                    android:minWidth="64dp"
+                    android:text="@string/btn_config"
+                    android:textColor="@color/primary"
+                    android:textSize="13sp" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <Switch
+                    android:id="@+id/switch_a11y"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:switchMinWidth="56dp" />
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- Card 4: Action Footer -->
+        <!-- Quick Refresh -->
         <Button
             android:id="@+id/btn_refresh"
             android:layout_width="match_parent"
             android:layout_height="44dp"
-            android:layout_marginTop="4dp"
             android:layout_marginBottom="24dp"
             android:background="@drawable/bg_button_outline"
             android:text="@string/btn_refresh"

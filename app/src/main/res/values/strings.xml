@@ -8,28 +8,53 @@
     <string name="btn_about">About</string>
     <string name="btn_back">Back</string>
 
-    <!-- Network Info Section -->
-    <string name="section_network_title">Network Environment</string>
-    <string name="label_wifi_ssid">WiFi SSID:</string>
-    <string name="label_device_ip">Device IP:</string>
+    <!-- Card 1: System Permission -->
+    <string name="card_permission_title">System Permission</string>
+    <string name="status_permission_none">Not Authorized</string>
+    <string name="status_permission_root">Authorized (Root)</string>
+    <string name="status_permission_secure">Authorized (ADB / Secure Settings)</string>
+    <string name="desc_permission_none">Root or ADB permission is required for background setprop and silent toggles.</string>
+    <string name="desc_permission_granted">Full system permissions are active. Seamless operations enabled.</string>
+    <string name="btn_grant_permission">Grant</string>
+    <string name="btn_permission_granted_root">Granted (Root)</string>
+    <string name="btn_try_get_root">Try Acquiring Root</string>
+    <string name="btn_checking_permission">Verifying permission...</string>
+    <string name="toast_has_secure_settings">Root permission not granted, but Secure Settings permission is active</string>
+    <string name="dialog_permission_guide_title">System Permission Guide</string>
+    <string name="dialog_permission_guide_msg">To enable wireless ADB and silent toggles, either grant Root permission via your root manager (Magisk / KernelSU / APatch), or execute the following ADB command via computer:\n\nadb shell pm grant com.xrsec.wifiadb android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="btn_copy_grant_cmd">Copy Command</string>
+    <string name="grant_cmd_text">adb shell pm grant com.xrsec.wifiadb android.permission.WRITE_SECURE_SETTINGS</string>
+    <string name="toast_grant_cmd_copied">ADB grant command copied to clipboard</string>
+    <string name="toast_root_success">Root permission acquired successfully!</string>
+
+    <!-- Card 2: Wireless Debugging -->
+    <string name="card_adb_title">Wireless Debugging</string>
+    <string name="status_adb_active">Running</string>
+    <string name="status_adb_inactive">Stopped</string>
+    <string name="label_ip_port">IP &amp; Port: %1$s:%2$d</string>
+    <string name="label_wifi_name">WiFi: %s</string>
     <string name="text_not_connected">Not connected to WiFi</string>
     <string name="text_unknown_ip">--.--.--.--</string>
+    <string name="btn_config">Config</string>
+    <string name="btn_copy_tag">[Copy]</string>
+    <string name="dialog_port_title">Configure ADB Port</string>
+    <string name="dialog_port_hint">Port (1024 - 65535)</string>
+    <string name="btn_confirm">OK</string>
+    <string name="btn_cancel">Cancel</string>
 
-    <!-- Wireless ADB Section -->
-    <string name="section_adb_title">Wireless Debugging (Port %d)</string>
-    <string name="label_adb_status">Service Status:</string>
-    <string name="status_adb_running">Port %d is Open (Listening)</string>
-    <string name="status_adb_stopped">Stopped (USB Mode)</string>
-    <string name="label_root_status">Root Permission:</string>
-    <string name="status_root_granted">Root Granted</string>
-    <string name="status_root_denied">Root Not Detected</string>
-    <string name="btn_start_adb">Start Wireless ADB</string>
-    <string name="btn_stop_adb">Stop Wireless ADB</string>
-    <string name="btn_operating">Executing operation...</string>
-    <string name="label_connect_command">Connect Command:</string>
-    <string name="btn_copy_command">Copy</string>
+    <!-- Card 3: Accessibility Service -->
+    <string name="card_accessibility_title">Accessibility Service</string>
+    <string name="status_a11y_active">Active (Auto-confirm dialogs)</string>
+    <string name="status_a11y_inactive">Disabled</string>
+    <string name="desc_a11y_intro">Automatically recognizes RSA fingerprint prompts and confirms debugging dialogs.</string>
+    <string name="accessibility_service_description">WiFi ADB Accessibility Service automatically confirms USB/Wireless debugging authorization prompts from authorized computers.</string>
+    <string name="toast_a11y_silent_success">Accessibility service updated silently</string>
+    <string name="toast_a11y_jump_settings">Redirecting to system accessibility settings...</string>
 
-    <!-- Toasts -->
+    <!-- Quick Actions -->
+    <string name="btn_refresh">Refresh Status</string>
+
+    <!-- Toasts & Messages -->
     <string name="toast_copied">Connect command copied to clipboard</string>
     <string name="toast_no_ip">No valid network found. Cannot generate connect command</string>
     <string name="toast_root_required">Root permission is required to toggle wireless ADB</string>
@@ -40,17 +65,6 @@
     <string name="toast_cannot_open_accessibility">Cannot open system accessibility settings</string>
     <string name="toast_port_invalid">Please enter a valid port between 1024 and 65535</string>
     <string name="toast_settings_saved">Settings saved</string>
-
-    <!-- Accessibility Assistant -->
-    <string name="section_accessibility_title">Accessibility Assistant</string>
-    <string name="label_accessibility_status">Accessibility Status:</string>
-    <string name="status_accessibility_enabled">Active (Auto-confirm ADB dialogs)</string>
-    <string name="status_accessibility_disabled">Disabled</string>
-    <string name="btn_open_accessibility">Enable Accessibility Service</string>
-    <string name="accessibility_service_description">WiFi ADB Accessibility Service automatically confirms USB/Wireless debugging authorization prompts from authorized computers.</string>
-
-    <!-- Quick Actions -->
-    <string name="btn_refresh">Refresh Status</string>
 
     <!-- Foreground Notification -->
     <string name="notification_channel_name">WiFi ADB Status</string>
