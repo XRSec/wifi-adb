@@ -200,12 +200,11 @@ object AdbController {
                 client.shell("settings put global adb_allowed_connection_time 0")
                 disableAdbAuthTimeout(context)
 
-                // 5. 连接后自动切换/固定端口至用户配置端口 (默认 5555)
+                // 5. 连接后自动切换/固定端口至用户配置端口 (默认 5555，免 Root 原生 tcpip 链路)
                 val configuredPort = AppPreferences.getPort(context)
                 if (configuredPort > 0) {
                     runCatching {
-                        client.shell("setprop service.adb.tcp.port $configuredPort")
-                        client.shell("setprop ctl.restart adbd")
+                        client.tcpip(configuredPort)
                     }
                 }
 
@@ -308,12 +307,11 @@ object AdbController {
                 client.shell("settings put secure accessibility_enabled 1")
                 client.shell("settings put global adb_allowed_connection_time 0")
 
-                // 尝试切换/固定端口为用户设定的常用端口
+                // 尝试切换/固定端口为用户设定的常用端口 (免 Root 原生 tcpip 链路)
                 val configuredPort = AppPreferences.getPort(context)
                 if (configuredPort > 0 && configuredPort != port) {
                     runCatching {
-                        client.shell("setprop service.adb.tcp.port $configuredPort")
-                        client.shell("setprop ctl.restart adbd")
+                        client.tcpip(configuredPort)
                     }
                 }
 
@@ -341,7 +339,9 @@ object AdbController {
     }
 
     /**
-     * 将系统动态 TLS 端口锁定/切换为用户配置的目标静态端口（默认 5555）
+     * 将系统动态 TLS 端口锁定/切换为用户配置的目标静态端口（默认 5555）。
+     * 免 Root 核心链路：直接通过 ADB 协议调用 client.tcpip(targetPort)，adbd 守护进程将在特权上下文原生重载监听端口。
+     * 若具备 Root 权限，亦保留 setprop 作为极速备用通道。
      */
     suspend fun fixAdbTcpPort(context: Context, targetPort: Int = DEFAULT_PORT, connectPort: Int = DEFAULT_PORT): Boolean = withContext(Dispatchers.IO) {
         if (ShellUtils.isRootAvailable()) {
@@ -349,7 +349,7 @@ object AdbController {
             val res = ShellUtils.execRoot(cmd)
             if (res.isSuccess) {
                 delay(500)
-                return@withContext isPortListening(targetPort)
+                if (isPortListening(targetPort)) return@withContext true
             }
         }
 
@@ -362,15 +362,21 @@ object AdbController {
                 connectTimeout = 3000,
                 socketTimeout = 5000
             ).use { client ->
-                client.shell("setprop service.adb.tcp.port $targetPort")
-                runCatching { client.shell("setprop ctl.restart adbd") }
-                runCatching { client.shell("stop adbd; start adbd") }
+                // adbd 收到 tcpip 协议指令后会返回确认信息并重启服务，重置当前 socket 链路
+                runCatching { client.tcpip(targetPort) }
             }
-            delay(500)
-            isPortListening(targetPort)
         } catch (_: Throwable) {
-            false
+            // 忽略连接阶段可能因 adbd 重启导致的异常
         }
+
+        // 轮询等待目标端口监听生效（最多等待 3 秒）
+        for (i in 1..6) {
+            delay(500)
+            if (isPortListening(targetPort)) {
+                return@withContext true
+            }
+        }
+        false
     }
 
     /**

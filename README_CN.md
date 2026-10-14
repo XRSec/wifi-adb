@@ -43,7 +43,8 @@
 ## 技术架构与实现原理
 
 ### 1. 端口切换机制
-通过 Root 执行原子化串联 Shell 命令：
+- **免 Root 原生链路（推荐）**：通过内置的 `dadb` 客户端直连本地无线调试服务，发送 ADB 原生传输层服务指令 `tcpip:<port>`。`adbd` 系统守护进程将在特权上下文原生重载并绑定目标监听端口（默认 5555），**100% 免 Root 且不受 SELinux setprop 拦截**。
+- **Root 极速备用链路**：在具备 Root 权限的环境下，支持执行原子化串联 Shell 命令：
 ```bash
 # 开启无线调试
 setprop service.adb.tcp.port 5555 && stop adbd && start adbd

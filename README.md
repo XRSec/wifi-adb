@@ -43,12 +43,13 @@ A lightweight, standalone, high-compatibility Android application to enable and 
 ## Architecture & Principles
 
 ### 1. TCP/IP Port Switching
-Enabling Wireless ADB executes atomic chained shell commands via root:
+- **Rootless Native Protocol (Recommended)**: Directly connects to local wireless debugging via built-in `dadb` and issues the native ADB transport command `tcpip:<port>`. The `adbd` daemon restarts internally in TCP mode on the designated port without requiring Root privileges or violating SELinux property policies.
+- **Root Fallback**: Under rooted environments, atomic chained shell commands can also be utilized:
 ```bash
+# Enable Wireless Debugging
 setprop service.adb.tcp.port 5555 && stop adbd && start adbd
-```
-Reverting back to USB mode executes:
-```bash
+
+# Revert to USB Debugging
 setprop service.adb.tcp.port -1 && stop adbd && start adbd
 ```
 
