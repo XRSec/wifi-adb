@@ -744,16 +744,19 @@ class MainActivity : Activity() {
         }
 
         val hasSecure = AdbController.hasWriteSecureSettings(this)
+        btnGrantA11yPermission.visibility = View.VISIBLE
         if (hasSecure) {
             tvA11yPermissionStatus.text = getString(R.string.status_permission_granted)
             tvA11yPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.status_green))
             tvA11yPermissionDesc.text = getString(R.string.desc_a11y_permission_granted)
-            btnGrantA11yPermission.visibility = View.GONE
+            btnGrantA11yPermission.text = getString(R.string.btn_permission_granted)
+            btnGrantA11yPermission.isEnabled = false
         } else {
             tvA11yPermissionStatus.text = getString(R.string.status_permission_none)
             tvA11yPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.status_red))
             tvA11yPermissionDesc.text = getString(R.string.desc_a11y_permission_none)
-            btnGrantA11yPermission.visibility = View.VISIBLE
+            btnGrantA11yPermission.text = getString(R.string.btn_grant_a11y_permission)
+            btnGrantA11yPermission.isEnabled = true
         }
         isUpdatingUi = false
     }
@@ -903,7 +906,7 @@ class MainActivity : Activity() {
                     showDadbPortInputDialog(configuredPort)
                 }
             } finally {
-                btnGrantA11yPermission.isEnabled = true
+                btnGrantA11yPermission.isEnabled = !AdbController.hasWriteSecureSettings(this@MainActivity)
             }
         }
     }
