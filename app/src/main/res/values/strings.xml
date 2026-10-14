@@ -23,8 +23,8 @@
     <string name="btn_checking_permission">Verifying permission...</string>
     <string name="toast_has_secure_settings">Root permission not granted, but Secure Settings permission is active</string>
     <string name="toast_permission_already_granted">WRITE_SECURE_SETTINGS permission already granted</string>
-    <string name="toast_root_grant_success">Granted WRITE_SECURE_SETTINGS via Root successfully!</string>
-    <string name="toast_dadb_grant_success">Authorization successful! WRITE_SECURE_SETTINGS permission granted.</string>
+    <string name="toast_root_grant_success">Granted WRITE_SECURE_SETTINGS and activated Accessibility Service via Root!</string>
+    <string name="toast_dadb_grant_success">Authorization successful! Granted WRITE_SECURE_SETTINGS and activated Accessibility Service.</string>
     <string name="dialog_permission_guide_title">System Permission Guide</string>
     <string name="dialog_permission_guide_msg">To enable wireless ADB and silent toggles, either grant Root permission via your root manager (Magisk / KernelSU / APatch), or execute the following ADB command via computer:\n\nadb shell pm grant com.xrsec.wifiadb android.permission.WRITE_SECURE_SETTINGS</string>
     <string name="btn_copy_grant_cmd">Copy Command</string>

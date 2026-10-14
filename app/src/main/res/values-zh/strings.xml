@@ -23,8 +23,8 @@
     <string name="btn_checking_permission">正在检测授权...</string>
     <string name="toast_has_secure_settings">未获取到 Root 权限，但具备系统设置权限</string>
     <string name="toast_permission_already_granted">已具备系统设置权限 (WRITE_SECURE_SETTINGS)</string>
-    <string name="toast_root_grant_success">已成功通过 Root 授予系统设置权限！</string>
-    <string name="toast_dadb_grant_success">一键授权成功！已获取系统设置权限 (WRITE_SECURE_SETTINGS)。</string>
+    <string name="toast_root_grant_success">已成功通过 Root 授予系统设置权限并静默激活无障碍服务！</string>
+    <string name="toast_dadb_grant_success">一键授权成功！已获取系统设置权限并静默激活无障碍服务。</string>
     <string name="dialog_permission_guide_title">系统权限获取指导</string>
     <string name="dialog_permission_guide_msg">开启无线调试及静默控制无障碍需要系统提权。请通过 Root 管理器（如 Magisk、KernelSU、APatch）为本应用授予 Root 权限；或者在电脑端执行以下 ADB 命令提权：\n\nadb shell pm grant com.xrsec.wifiadb android.permission.WRITE_SECURE_SETTINGS</string>
     <string name="btn_copy_grant_cmd">复制命令</string>

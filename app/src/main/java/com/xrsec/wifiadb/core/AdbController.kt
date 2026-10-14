@@ -59,12 +59,43 @@ object AdbController {
     }
 
     /**
-     * 通过 Root 权限为本 App 授予 WRITE_SECURE_SETTINGS 权限
+     * 通过 Root 权限为本 App 授予 WRITE_SECURE_SETTINGS 权限，解除受限设置，并一揽子静默启用无障碍服务。
      */
     suspend fun grantWriteSecureSettingsWithRoot(context: Context): Boolean = withContext(Dispatchers.IO) {
         val pkg = context.packageName
-        val res = ShellUtils.execRoot("pm grant $pkg android.permission.WRITE_SECURE_SETTINGS")
-        if (res.isSuccess) {
+        val targetComponent = ComponentName(context, "$pkg.service.WifiAdbAccessibilityService")
+        val targetFlattened = targetComponent.flattenToString()
+
+        val currentServicesStr = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: ""
+
+        val currentComponents = currentServicesStr.split(":")
+            .filter { it.isNotBlank() }
+            .mapNotNull { ComponentName.unflattenFromString(it) }
+
+        val filteredFlattened = currentComponents.filterNot {
+            it.packageName == targetComponent.packageName && it.className == targetComponent.className
+        }.map { it.flattenToString() }.toMutableList()
+        filteredFlattened.add(targetFlattened)
+
+        val newServices = filteredFlattened.joinToString(":")
+
+        // 在同一个 Root 管道中一揽子全部搞定：赋权 + 解除 Android 13+ 受限设置 + 静默激活无障碍服务
+        val commandsList = mutableListOf(
+            "pm grant $pkg android.permission.WRITE_SECURE_SETTINGS"
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            commandsList.add("appops set $pkg ACCESS_RESTRICTED_SETTINGS allow")
+        }
+        commandsList.add("settings put secure enabled_accessibility_services \"$newServices\"")
+        commandsList.add("settings put secure accessibility_enabled 1")
+        val commands = commandsList.joinToString(" && ")
+
+        val res = ShellUtils.execRoot(commands)
+        if (res.isSuccess || hasWriteSecureSettings(context)) {
+            delay(300)
             hasWriteSecureSettings(context)
         } else {
             false
@@ -72,7 +103,7 @@ object AdbController {
     }
 
     /**
-     * 尝试获取 Root 权限，并在成功后自动为本 App 授予 WRITE_SECURE_SETTINGS 权限。
+     * 尝试获取 Root 权限，并在成功后自动为本 App 授予 WRITE_SECURE_SETTINGS 权限并激活无障碍服务。
      */
     suspend fun requestRootPermission(context: Context): Boolean = withContext(Dispatchers.IO) {
         val result = ShellUtils.execRoot("id")
@@ -86,8 +117,10 @@ object AdbController {
     /**
      * 一键本地闭环提权：
      * 利用 dadb 连接本地 127.0.0.1:port 发起 ADB 握手，触发系统授权弹窗，
-     * 配合 WifiAdbAccessibilityService 自动确认授权（或人工点击确认），
-     * 连通后执行 pm grant 授予 WRITE_SECURE_SETTINGS 权限。
+     * 连通后在同一会话中一网打尽：
+     * 1. pm grant 授予 WRITE_SECURE_SETTINGS 权限；
+     * 2. appops set 解除 Android 13+ 受限设置；
+     * 3. 自动将无障碍服务写入 enabled_accessibility_services 并静默激活！
      */
     suspend fun grantWriteSecureSettingsViaDadb(context: Context, port: Int = DEFAULT_PORT): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -119,11 +152,52 @@ object AdbController {
             )
             dadb.use { client ->
                 val pkg = context.packageName
-                val response = client.shell("pm grant $pkg android.permission.WRITE_SECURE_SETTINGS")
-                if (response.exitCode == 0 || hasWriteSecureSettings(context)) {
+                // 1. 授予系统设置写入权限
+                val grantResponse = client.shell("pm grant $pkg android.permission.WRITE_SECURE_SETTINGS")
+
+                // 2. 解除 Android 13+ 受限设置阻断
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    runCatching { client.shell("appops set $pkg ACCESS_RESTRICTED_SETTINGS allow") }
+                }
+
+                // 3. 在同一会话中一揽子静默开启无障碍服务，实现 0 手动点击
+                val targetComponent = ComponentName(context, "$pkg.service.WifiAdbAccessibilityService")
+                val targetFlattened = targetComponent.flattenToString()
+                val getRes = client.shell("settings get secure enabled_accessibility_services")
+                val currentServicesStr = getRes.allOutput.trim().takeIf { it != "null" } ?: ""
+
+                val currentComponents = currentServicesStr.split(":")
+                    .filter { it.isNotBlank() }
+                    .mapNotNull { ComponentName.unflattenFromString(it) }
+
+                val filteredFlattened = currentComponents.filterNot {
+                    it.packageName == targetComponent.packageName && it.className == targetComponent.className
+                }.map { it.flattenToString() }.toMutableList()
+                filteredFlattened.add(targetFlattened)
+
+                val newServices = filteredFlattened.joinToString(":")
+
+                client.shell("settings put secure enabled_accessibility_services \"$newServices\"")
+                client.shell("settings put secure accessibility_enabled 1")
+
+                // 同步利用 ContentResolver 刷新，确保系统即时反映状态
+                runCatching {
+                    Settings.Secure.putString(
+                        context.contentResolver,
+                        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                        newServices
+                    )
+                    Settings.Secure.putInt(
+                        context.contentResolver,
+                        Settings.Secure.ACCESSIBILITY_ENABLED,
+                        1
+                    )
+                }
+
+                if (grantResponse.exitCode == 0 || hasWriteSecureSettings(context)) {
                     Result.success(Unit)
                 } else {
-                    val errMsg = response.allOutput.ifBlank { response.errorOutput }.ifBlank { "Exit code ${response.exitCode}" }
+                    val errMsg = grantResponse.allOutput.ifBlank { grantResponse.errorOutput }.ifBlank { "Exit code ${grantResponse.exitCode}" }
                     Result.failure(Exception("pm grant failed: $errMsg"))
                 }
             }

@@ -87,6 +87,7 @@ class MainActivity : Activity() {
                 refreshNetworkAndAdbInfo()
             }
         }
+
         refreshAll()
     }
 
