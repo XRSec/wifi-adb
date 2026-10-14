@@ -175,36 +175,6 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Clickable Command Box -->
-            <LinearLayout
-                android:id="@+id/layout_command_box"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_command"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="8dp">
-
-                <TextView
-                    android:id="@+id/tv_command"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="monospace"
-                    android:text="adb connect 192.168.x.x:5555"
-                    android:textColor="@color/command_text"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:text="@string/btn_copy_tag"
-                    android:textColor="@color/primary"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
             <!-- Action Area: Config & Switch -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -293,7 +263,7 @@
                     android:layout_height="36dp"
                     android:background="@drawable/bg_button_outline"
                     android:minWidth="64dp"
-                    android:text="@string/btn_config"
+                    android:text="@string/btn_system_settings"
                     android:textColor="@color/primary"
                     android:textSize="13sp" />
 

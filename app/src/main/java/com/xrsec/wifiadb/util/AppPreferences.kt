@@ -50,4 +50,14 @@ object AppPreferences {
     fun setAutoConfirmAdbEnabled(context: Context, enabled: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_AUTO_CONFIRM_ADB, enabled).apply()
     }
+
+    private const val KEY_ADB_KEY_PASSPHRASE = "key_adb_key_passphrase"
+
+    fun getAdbKeyPassphrase(context: Context): String {
+        return getPrefs(context).getString(KEY_ADB_KEY_PASSPHRASE, "") ?: ""
+    }
+
+    fun setAdbKeyPassphrase(context: Context, passphrase: String) {
+        getPrefs(context).edit().putString(KEY_ADB_KEY_PASSPHRASE, passphrase).apply()
+    }
 }

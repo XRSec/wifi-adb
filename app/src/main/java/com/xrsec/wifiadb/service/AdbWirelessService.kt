@@ -80,8 +80,8 @@ class AdbWirelessService : Service() {
         serviceScope.launch {
             withContext(Dispatchers.IO) {
                 when (action) {
-                    ACTION_START_WIRELESS -> AdbController.startWirelessAdb(port)
-                    ACTION_STOP_WIRELESS -> AdbController.stopWirelessAdb()
+                    ACTION_START_WIRELESS -> AdbController.setWirelessDebuggingEnabled(this@AdbWirelessService, true, port)
+                    ACTION_STOP_WIRELESS -> AdbController.setWirelessDebuggingEnabled(this@AdbWirelessService, false, port)
                     else -> {}
                 }
             }
@@ -123,15 +123,16 @@ class AdbWirelessService : Service() {
     }
 
     private fun refreshNotificationContentAsync() {
-        val port = AppPreferences.getPort(this)
+        val configuredPort = AppPreferences.getPort(this)
         serviceScope.launch {
-            val (ip, isAdbActive) = withContext(Dispatchers.IO) {
+            val (ip, isAdbActive, portInfo) = withContext(Dispatchers.IO) {
                 val currentIp = NetworkUtils.getLocalIpAddress(this@AdbWirelessService)
-                val active = AdbController.isPortListening(port)
-                Pair(currentIp, active)
+                val active = AdbController.isAdbWirelessActive(this@AdbWirelessService, configuredPort)
+                val info = AdbController.getActivePortInfo(this@AdbWirelessService, configuredPort)
+                Triple(currentIp, active, info)
             }
 
-            val updatedNotification = buildDetailedNotification(ip, isAdbActive, port)
+            val updatedNotification = buildDetailedNotification(ip, isAdbActive, portInfo, configuredPort)
             notificationManager?.notify(NOTIFICATION_ID, updatedNotification)
         }
     }
@@ -146,17 +147,39 @@ class AdbWirelessService : Service() {
             .build()
     }
 
-    private fun buildDetailedNotification(ip: String?, isAdbActive: Boolean, port: Int): Notification {
+    private fun buildDetailedNotification(
+        ip: String?,
+        isAdbActive: Boolean,
+        portInfo: AdbController.ActivePortInfo,
+        configuredPort: Int
+    ): Notification {
         val contentTitle = if (isAdbActive) {
             getString(R.string.notification_adb_active_title)
         } else {
             getString(R.string.notification_adb_inactive_title)
         }
 
+        val dynamicTlsPort = AdbController.getDynamicTlsPort()
+        val effectivePort = when {
+            portInfo.port > 0 -> portInfo.port
+            dynamicTlsPort != null -> dynamicTlsPort
+            else -> configuredPort
+        }
+        val isSystemWireless = portInfo.isSystemWireless || (isAdbActive && effectivePort != configuredPort)
         val contentText = if (isAdbActive && !ip.isNullOrBlank()) {
-            NetworkUtils.formatAdbConnectCommand(ip, port)
+            if (isSystemWireless && effectivePort > 0) {
+                "${NetworkUtils.formatAdbConnectCommand(ip, effectivePort)} (${getString(R.string.status_system_wireless)})"
+            } else if (isSystemWireless) {
+                "adb connect $ip (${getString(R.string.status_system_wireless)})"
+            } else {
+                NetworkUtils.formatAdbConnectCommand(ip, effectivePort)
+            }
         } else if (isAdbActive) {
-            getString(R.string.notification_listening_no_ip, port)
+            if (effectivePort > 0) {
+                getString(R.string.notification_listening_no_ip, effectivePort)
+            } else {
+                getString(R.string.notification_running_base)
+            }
         } else {
             getString(R.string.notification_stopped_hint)
         }

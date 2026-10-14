@@ -7,6 +7,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import com.xrsec.wifiadb.service.AdbWirelessService
+import com.xrsec.wifiadb.util.AppPreferences
+import com.xrsec.wifiadb.util.KeyCryptoUtil
 import dadb.AdbKeyPair
 import dadb.Dadb
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +18,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.security.SecureRandom
 
 object AdbController {
 
@@ -124,22 +128,12 @@ object AdbController {
      */
     suspend fun grantWriteSecureSettingsViaDadb(context: Context, port: Int = DEFAULT_PORT): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val privFile = File(context.filesDir, "adbkey")
-            val pubFile = File(context.filesDir, "adbkey.pub")
             val keyPair = try {
-                if (!privFile.exists() || !pubFile.exists() || privFile.length() == 0L || pubFile.length() == 0L) {
-                    privFile.delete()
-                    pubFile.delete()
-                    AdbKeyPair.generate(privFile, pubFile, "app@wifi-adb")
-                }
-                AdbKeyPair.read(privFile, pubFile)
+                getAdbKeyPair(context)
             } catch (e: Throwable) {
                 if (e is kotlin.coroutines.cancellation.CancellationException) throw e
-                // 密钥文件损坏或 0 字节时执行自愈重生成
-                privFile.delete()
-                pubFile.delete()
-                AdbKeyPair.generate(privFile, pubFile, "app@wifi-adb")
-                AdbKeyPair.read(privFile, pubFile)
+                regenerateAdbKey(context)
+                getAdbKeyPair(context)
             }
 
             // 超时配置：connectTimeout 5s，socketTimeout 30s 以留足系统弹窗识别与点击时间
@@ -321,11 +315,235 @@ object AdbController {
     }
 
     /**
-     * 判断无线调试是否处于活跃状态。
-     * 按照安全与严谨性规范：以实际本地 Loopback Socket 探针连通性作为核心判定准则。
+     * 读取 Android 11+ 系统无线调试动态 TLS 端口 (service.adb.tls.port)
      */
+    fun getDynamicTlsPort(): Int? {
+        val prop = ShellUtils.exec("getprop service.adb.tls.port").stdout.trim()
+        val parsed = prop.toIntOrNull()?.takeIf { it > 0 }
+        if (parsed != null) return parsed
+
+        return runCatching {
+            val spClass = Class.forName("android.os.SystemProperties")
+            val getMethod = spClass.getMethod("get", String::class.java, String::class.java)
+            val value = getMethod.invoke(null, "service.adb.tls.port", "") as String
+            value.trim().toIntOrNull()?.takeIf { it > 0 }
+        }.getOrNull()
+    }
+
+    fun getAdbTlsPort(): Int {
+        return getDynamicTlsPort() ?: -1
+    }
+
+    /**
+     * 判断系统全局设置中的无线调试 (adb_wifi_enabled) 是否已启用 (Android 11+ / API 30+)
+     */
+    fun isAdbWifiGlobalEnabled(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+        return try {
+            Settings.Global.getInt(context.contentResolver, "adb_wifi_enabled", 0) == 1
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    data class ActivePortInfo(
+        val isActive: Boolean,
+        val port: Int,
+        val isSystemWireless: Boolean
+    )
+
+    /**
+     * 获取当前无线调试活跃状态与实际生效端口：
+     * 1. 优先检测静态 TCP 监听端口（用户配置端口或 5555）
+     * 2. 其次检测 Android 11+ 系统无线调试动态 TLS 端口
+     * 3. 区分静态端口与系统无线调试动态端口，确保展示与连接真实精准
+     */
+    suspend fun getActivePortInfo(context: Context, configuredPort: Int = DEFAULT_PORT): ActivePortInfo = withContext(Dispatchers.IO) {
+        // 1. 若配置的静态 TCP 端口在监听，判定为静态端口活跃
+        if (isPortListening(configuredPort)) {
+            return@withContext ActivePortInfo(isActive = true, port = configuredPort, isSystemWireless = false)
+        }
+
+        // 2. 检查 Android 11+ 系统全局无线调试开关
+        if (isAdbWifiGlobalEnabled(context)) {
+            val tlsPort = getDynamicTlsPort()
+            if (tlsPort != null && tlsPort > 0) {
+                return@withContext ActivePortInfo(isActive = true, port = tlsPort, isSystemWireless = true)
+            }
+            return@withContext ActivePortInfo(isActive = true, port = -1, isSystemWireless = true)
+        }
+
+        // 3. 兜底检测标准 5555 端口
+        if (configuredPort != DEFAULT_PORT && isPortListening(DEFAULT_PORT)) {
+            return@withContext ActivePortInfo(isActive = true, port = DEFAULT_PORT, isSystemWireless = false)
+        }
+
+        // 4. 未启动
+        ActivePortInfo(isActive = false, port = configuredPort, isSystemWireless = false)
+    }
+
+    /**
+     * 判断无线调试是否处于活跃状态：
+     * 判定准则：系统全局设置 adb_wifi_enabled == 1 或本地 Loopback Socket 探针连通。
+     */
+    suspend fun isAdbWirelessActive(context: Context, port: Int = DEFAULT_PORT): Boolean = withContext(Dispatchers.IO) {
+        isAdbWifiGlobalEnabled(context) || isPortListening(port)
+    }
+
     suspend fun isAdbWirelessActive(port: Int = DEFAULT_PORT): Boolean = withContext(Dispatchers.IO) {
         isPortListening(port)
+    }
+
+    /**
+     * 真实控制系统无线调试状态：
+     * 1. 尝试通过 WRITE_SECURE_SETTINGS 写入 Settings.Global.adb_wifi_enabled (Android 11+ 系统真实开关)
+     * 2. 若具备 Root，同时配合 setprop service.adb.tcp.port 并重启 adbd
+     * 3. 联动 AdbWirelessService 前台通知服务
+     */
+    suspend fun setWirelessDebuggingEnabled(context: Context, enable: Boolean, port: Int = DEFAULT_PORT): Boolean = withContext(Dispatchers.IO) {
+        var anyActionTaken = false
+
+        // 1. 系统设置真实开关 (需要 WRITE_SECURE_SETTINGS)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val globalVal = if (enable) 1 else 0
+                val success = Settings.Global.putInt(context.contentResolver, "adb_wifi_enabled", globalVal)
+                if (success) anyActionTaken = true
+            } catch (_: Throwable) {}
+        }
+
+        // 2. 若具备 Root，同时执行 setprop 与 adbd 重启
+        if (ShellUtils.isRootAvailable()) {
+            val rootSuccess = if (enable) {
+                startWirelessAdb(port)
+            } else {
+                stopWirelessAdb(port)
+            }
+            if (rootSuccess) anyActionTaken = true
+        }
+
+        // 3. 联动 AdbWirelessService 前台服务
+        try {
+            AdbWirelessService.start(context, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
+        } catch (_: Throwable) {}
+
+        delay(300)
+        isAdbWirelessActive(context, port)
+    }
+
+    /**
+     * 获取解密后的 AdbKeyPair 实例。
+     * 若私钥已加密，自动通过 AppPreferences 中的 Passphrase 进行解密还原并安全加载。
+     */
+    fun getAdbKeyPair(context: Context): AdbKeyPair {
+        val privFile = File(context.filesDir, "adbkey")
+        val pubFile = File(context.filesDir, "adbkey.pub")
+        val passphrase = AppPreferences.getAdbKeyPassphrase(context)
+
+        if (!privFile.exists() || !pubFile.exists() || privFile.length() == 0L || pubFile.length() == 0L) {
+            regenerateAdbKey(context)
+        }
+
+        val privBytes = privFile.readBytes()
+        val plainPrivBytes = if (KeyCryptoUtil.isEncrypted(privBytes)) {
+            KeyCryptoUtil.decrypt(privBytes, passphrase)
+        } else {
+            privBytes
+        }
+
+        val tempKeyFile = File.createTempFile("adbkey_", ".tmp", context.cacheDir)
+        return try {
+            tempKeyFile.writeBytes(plainPrivBytes)
+            AdbKeyPair.read(tempKeyFile, pubFile)
+        } finally {
+            runCatching {
+                val wipe = ByteArray(tempKeyFile.length().toInt())
+                SecureRandom().nextBytes(wipe)
+                tempKeyFile.writeBytes(wipe)
+                tempKeyFile.delete()
+            }
+        }
+    }
+
+    /**
+     * 获取当前 ADB 公钥 SHA-256 指纹
+     */
+    fun getAdbPublicKeyFingerprint(context: Context): String {
+        return runCatching {
+            val pubFile = File(context.filesDir, "adbkey.pub")
+            val privFile = File(context.filesDir, "adbkey")
+            if (!pubFile.exists() || !privFile.exists() || pubFile.length() == 0L || privFile.length() == 0L) {
+                regenerateAdbKey(context)
+            }
+            val keyPair = getAdbKeyPair(context)
+            val digest = java.security.MessageDigest.getInstance("SHA-256").digest(keyPair.adbPublicKey())
+            digest.joinToString(":") { "%02X".format(it) }
+        }.getOrDefault("SHA256:--:--:--")
+    }
+
+    /**
+     * 重新生成本地 ADB 密钥对并返回新的指纹。
+     * 若已配置 Passphrase，落盘私钥将自动完成 AES-256-GCM 加密保护。
+     */
+    fun regenerateAdbKey(context: Context): String {
+        val privFile = File(context.filesDir, "adbkey")
+        val pubFile = File(context.filesDir, "adbkey.pub")
+        val passphrase = AppPreferences.getAdbKeyPassphrase(context)
+
+        privFile.delete()
+        pubFile.delete()
+
+        val tempFile = File.createTempFile("gen_adbkey_", ".tmp", context.cacheDir)
+        try {
+            AdbKeyPair.generate(tempFile, pubFile, "app@wifi-adb")
+            val rawPrivBytes = tempFile.readBytes()
+            val finalBytes = if (passphrase.isNotBlank()) {
+                KeyCryptoUtil.encrypt(rawPrivBytes, passphrase)
+            } else {
+                rawPrivBytes
+            }
+            privFile.writeBytes(finalBytes)
+        } finally {
+            runCatching {
+                val wipe = ByteArray(tempFile.length().toInt())
+                SecureRandom().nextBytes(wipe)
+                tempFile.writeBytes(wipe)
+                tempFile.delete()
+            }
+        }
+        return getAdbPublicKeyFingerprint(context)
+    }
+
+    /**
+     * 更新 ADB 密钥保护密码：
+     * 读取现有密钥并使用新密码重新加密落盘，若新密码为空则以明文直接存储。
+     */
+    fun updateKeyPassphrase(context: Context, newPassphrase: String): Boolean {
+        val privFile = File(context.filesDir, "adbkey")
+        if (!privFile.exists() || privFile.length() == 0L) {
+            AppPreferences.setAdbKeyPassphrase(context, newPassphrase)
+            return true
+        }
+
+        val currentPassphrase = AppPreferences.getAdbKeyPassphrase(context)
+        return try {
+            val fileBytes = privFile.readBytes()
+            val plainBytes = if (KeyCryptoUtil.isEncrypted(fileBytes)) {
+                KeyCryptoUtil.decrypt(fileBytes, currentPassphrase)
+            } else {
+                fileBytes
+            }
+            val newBytes = if (newPassphrase.isNotBlank()) {
+                KeyCryptoUtil.encrypt(plainBytes, newPassphrase)
+            } else {
+                plainBytes
+            }
+            privFile.writeBytes(newBytes)
+            AppPreferences.setAdbKeyPassphrase(context, newPassphrase)
+            true
+        } catch (_: Throwable) {
+            false
+        }
     }
 
     /**

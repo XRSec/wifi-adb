@@ -47,7 +47,9 @@
     <string name="card_adb_title">Wireless Debugging</string>
     <string name="status_adb_active">Running</string>
     <string name="status_adb_inactive">Stopped</string>
-    <string name="label_ip_port">IP &amp; Port: %1$s:%2$d</string>
+    <string name="label_ip_port">IP &amp; Port: %1$s:%2$s</string>
+    <string name="status_system_wireless">System Wireless Debugging</string>
+    <string name="port_system_dynamic">System Dynamic Port</string>
     <string name="label_wifi_name">WiFi: %s</string>
     <string name="text_not_connected">Not connected to WiFi</string>
     <string name="text_unknown_ip">--.--.--.--</string>
@@ -60,8 +62,9 @@
 
     <!-- Card 3: Accessibility Service -->
     <string name="card_accessibility_title">Accessibility Service</string>
-    <string name="status_a11y_active">Active (Auto-confirm dialogs)</string>
+    <string name="status_a11y_active">Running</string>
     <string name="status_a11y_inactive">Disabled</string>
+    <string name="btn_system_settings">System Settings</string>
     <string name="desc_a11y_intro">Automatically recognizes RSA fingerprint prompts and confirms debugging dialogs.</string>
     <string name="accessibility_service_description">WiFi ADB Accessibility Service automatically confirms USB/Wireless debugging authorization prompts from authorized computers.</string>
     <string name="toast_a11y_silent_success">Accessibility service updated silently</string>
@@ -74,9 +77,11 @@
     <string name="toast_copied">Connect command copied to clipboard</string>
     <string name="toast_no_ip">No valid network found. Cannot generate connect command</string>
     <string name="toast_root_required">Root permission is required to toggle wireless ADB</string>
-    <string name="toast_adb_started">Wireless ADB successfully started (Port %d)</string>
+    <string name="toast_permission_required_for_wireless">Wireless debugging requires Root or WRITE_SECURE_SETTINGS permission</string>
+    <string name="toast_adb_started">Wireless ADB successfully started (Port %s)</string>
     <string name="toast_adb_stopped">Wireless ADB stopped</string>
     <string name="toast_adb_start_failed">Failed to start Wireless ADB. Please verify Root access</string>
+    <string name="toast_adb_stop_failed">Failed to stop Wireless ADB</string>
     <string name="toast_status_refreshed">Status refreshed</string>
     <string name="toast_cannot_open_accessibility">Cannot open system accessibility settings</string>
     <string name="toast_port_invalid">Please enter a valid port between 1024 and 65535</string>
@@ -105,6 +110,30 @@
     <string name="desc_boot_start">Automatically enable wireless ADB when device boots up (Requires Root)</string>
     <string name="label_auto_confirm_adb">Auto-confirm ADB Authorization</string>
     <string name="desc_auto_confirm_adb">Automatically check "Always allow" and click "OK" via Accessibility Service</string>
+
+    <!-- Settings Card 4: Keepalive & Autostart -->
+    <string name="card_power_title">Keepalive &amp; Autostart</string>
+    <string name="label_battery_opt">Battery Optimization Whitelist</string>
+    <string name="desc_battery_opt">Ignore battery optimizations so the background service remains active without being killed.</string>
+    <string name="status_battery_ignored">Whitelisted (Unrestricted)</string>
+    <string name="status_battery_optimizing">Restricted by System</string>
+    <string name="btn_request_battery_opt">Request Whitelist</string>
+    <string name="label_autostart_mgmt">Vendor Autostart Settings</string>
+    <string name="desc_autostart_mgmt">Open autostart &amp; background power settings for your device brand (Xiaomi, Huawei, vivo, OPPO, Samsung, Meizu, etc.).</string>
+    <string name="btn_open_autostart">Open Autostart Settings</string>
+    <string name="toast_autostart_not_found">Could not open vendor autostart settings. Please configure manually in system settings.</string>
+    <string name="toast_battery_opt_not_found">Could not open battery optimization settings</string>
+
+    <!-- Settings Card 5: ADB Key Management -->
+    <string name="card_adb_key_title">ADB Key Management</string>
+    <string name="label_adb_fingerprint">Public Key Fingerprint (SHA-256):</string>
+    <string name="label_adb_passphrase">Key Passphrase (Optional):</string>
+    <string name="hint_adb_passphrase">Leave blank for no passphrase</string>
+    <string name="desc_adb_key">The local ADB key pair is used to authorize loopback requests. Regenerating the key pair will reset your authentication credentials.</string>
+    <string name="btn_regenerate_adb_key">Regenerate Key</string>
+    <string name="dialog_regenerate_key_title">Regenerate ADB Key?</string>
+    <string name="dialog_regenerate_key_msg">Regenerating the ADB key will overwrite your current key pair. You will need to re-authorize when connecting locally or remotely. Continue?</string>
+    <string name="toast_key_regenerated">New ADB key generated successfully</string>
     <string name="btn_save_settings">Save Settings</string>
 
     <!-- About Activity -->

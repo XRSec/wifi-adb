@@ -47,7 +47,9 @@
     <string name="card_adb_title">无线调试</string>
     <string name="status_adb_active">运行中</string>
     <string name="status_adb_inactive">未启动</string>
-    <string name="label_ip_port">IP与端口: %1$s:%2$d</string>
+    <string name="label_ip_port">IP与端口: %1$s:%2$s</string>
+    <string name="status_system_wireless">系统无线调试</string>
+    <string name="port_system_dynamic">系统动态端口</string>
     <string name="label_wifi_name">WiFi: %s</string>
     <string name="text_not_connected">未连接 WiFi</string>
     <string name="text_unknown_ip">--.--.--.--</string>
@@ -60,8 +62,9 @@
 
     <!-- 卡片三：无障碍服务 -->
     <string name="card_accessibility_title">无障碍服务</string>
-    <string name="status_a11y_active">已启用 (自动确认弹窗)</string>
-    <string name="status_a11y_inactive">未启用</string>
+    <string name="status_a11y_active">运行中</string>
+    <string name="status_a11y_inactive">未开启</string>
+    <string name="btn_system_settings">系统设置</string>
     <string name="desc_a11y_intro">自动检测 RSA 密钥指纹弹窗，自动勾选“一律允许”并点击确认。</string>
     <string name="accessibility_service_description">WiFi ADB 无障碍辅助服务，在连接新电脑调试时自动确认并允许调试授权弹窗。</string>
     <string name="toast_a11y_silent_success">无障碍服务已静默切换</string>
@@ -74,9 +77,11 @@
     <string name="toast_copied">已复制连接命令到剪贴板</string>
     <string name="toast_no_ip">当前未连接有效网络，无法生成连接命令</string>
     <string name="toast_root_required">开启无线调试需要 Root 权限，请先授予 Root 权限</string>
-    <string name="toast_adb_started">无线调试已成功开启 (端口 %d)</string>
+    <string name="toast_permission_required_for_wireless">开启无线调试需要 Root 或系统设置 (WRITE_SECURE_SETTINGS) 权限</string>
+    <string name="toast_adb_started">无线调试已成功开启 (端口 %s)</string>
     <string name="toast_adb_stopped">无线调试已关闭</string>
     <string name="toast_adb_start_failed">开启无线调试失败，请检查 Root 授权</string>
+    <string name="toast_adb_stop_failed">关闭无线调试失败</string>
     <string name="toast_status_refreshed">状态已刷新</string>
     <string name="toast_cannot_open_accessibility">无法打开系统无障碍设置页面</string>
     <string name="toast_port_invalid">请输入 1024 至 65535 之间的有效端口号</string>
@@ -105,6 +110,30 @@
     <string name="desc_boot_start">系统启动完成后自动在后台开启无线调试 (需具备 Root 权限)</string>
     <string name="label_auto_confirm_adb">无障碍自动允许调试授权</string>
     <string name="desc_auto_confirm_adb">配合无障碍服务自动勾选“一律允许”并点击确认</string>
+
+    <!-- 设置卡片 4: 系统保活与自启动 -->
+    <string name="card_power_title">系统保活与自启动</string>
+    <string name="label_battery_opt">电池优化白名单</string>
+    <string name="desc_battery_opt">忽略电池优化，防止后台调试服务或无障碍服务被系统省电策略休眠杀死。</string>
+    <string name="status_battery_ignored">已加入白名单 (未限制)</string>
+    <string name="status_battery_optimizing">受系统优化限制</string>
+    <string name="btn_request_battery_opt">申请忽略优化</string>
+    <string name="label_autostart_mgmt">厂商自启动管理</string>
+    <string name="desc_autostart_mgmt">直达系统厂商（小米、华为、vivo、OPPO、三星、魅族等）自启动与后台高耗电权限设置页。</string>
+    <string name="btn_open_autostart">打开自启动设置</string>
+    <string name="toast_autostart_not_found">未找到对应的系统自启动设置页面，请前往系统设置手动开启</string>
+    <string name="toast_battery_opt_not_found">无法打开电池优化设置</string>
+
+    <!-- 设置卡片 5: ADB 密钥管理 -->
+    <string name="card_adb_key_title">ADB 密钥管理</string>
+    <string name="label_adb_fingerprint">本地 ADB 公钥指纹 (SHA-256):</string>
+    <string name="label_adb_passphrase">密钥加密密码 (可选):</string>
+    <string name="hint_adb_passphrase">留空表示不设置密码</string>
+    <string name="desc_adb_key">本地 ADB 密钥用于与本机或局域网无线调试服务握手。重新生成密钥可重置本地通信凭证。</string>
+    <string name="btn_regenerate_adb_key">重新生成密钥</string>
+    <string name="dialog_regenerate_key_title">确认重新生成 ADB 密钥？</string>
+    <string name="dialog_regenerate_key_msg">重新生成 ADB 密钥将覆盖当前的私钥与公钥。后续连接时需要重新进行调试授权确认。是否确定重新生成？</string>
+    <string name="toast_key_regenerated">已成功重新生成 ADB 密钥</string>
     <string name="btn_save_settings">保存设置</string>
 
     <!-- 关于页面 -->

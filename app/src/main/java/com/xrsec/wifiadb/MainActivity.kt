@@ -49,8 +49,6 @@ class MainActivity : Activity() {
     private lateinit var tvAdbStatus: TextView
     private lateinit var tvWifiName: TextView
     private lateinit var tvIpPort: TextView
-    private lateinit var layoutCommandBox: View
-    private lateinit var tvCommand: TextView
     private lateinit var btnConfigAdb: Button
     private lateinit var switchAdb: Switch
 
@@ -114,8 +112,6 @@ class MainActivity : Activity() {
         tvAdbStatus = findViewById(R.id.tv_adb_status)
         tvWifiName = findViewById(R.id.tv_wifi_name)
         tvIpPort = findViewById(R.id.tv_ip_port)
-        layoutCommandBox = findViewById(R.id.layout_command_box)
-        tvCommand = findViewById(R.id.tv_command)
         btnConfigAdb = findViewById(R.id.btn_config_adb)
         switchAdb = findViewById(R.id.switch_adb)
 
@@ -147,10 +143,6 @@ class MainActivity : Activity() {
             if (!opened) {
                 Toast.makeText(this, getString(R.string.toast_cannot_open_settings), Toast.LENGTH_SHORT).show()
             }
-        }
-
-        layoutCommandBox.setOnClickListener {
-            copyAdbCommand()
         }
 
         switchAdb.setOnCheckedChangeListener { _, isChecked ->
@@ -441,8 +433,18 @@ class MainActivity : Activity() {
                 )
             }
             currentIp = ip
-            val isAdbActive = withContext(Dispatchers.IO) {
-                AdbController.isAdbWirelessActive(configuredPort)
+            val (isAdbActive, displayPort) = withContext(Dispatchers.IO) {
+                val isStaticListening = AdbController.isPortListening(configuredPort)
+                val isGlobalEnabled = AdbController.isAdbWifiGlobalEnabled(this@MainActivity)
+                val active = isGlobalEnabled || isStaticListening
+
+                val portStr = if (isGlobalEnabled && !isStaticListening) {
+                    val dynPort = AdbController.getDynamicTlsPort()
+                    dynPort?.toString() ?: getString(R.string.port_system_dynamic)
+                } else {
+                    configuredPort.toString()
+                }
+                Pair(active, portStr)
             }
 
             tvWifiName.text = if (ssid.isNotBlank()) {
@@ -454,15 +456,8 @@ class MainActivity : Activity() {
             tvIpPort.text = getString(
                 R.string.label_ip_port,
                 ip ?: getString(R.string.text_unknown_ip),
-                configuredPort
+                displayPort
             )
-
-            val commandText = if (!ip.isNullOrBlank()) {
-                NetworkUtils.formatAdbConnectCommand(ip, configuredPort)
-            } else {
-                "adb connect 192.168.x.x:$configuredPort"
-            }
-            tvCommand.text = commandText
 
             isUpdatingUi = true
             if (isAdbActive) {
@@ -482,51 +477,46 @@ class MainActivity : Activity() {
         val configuredPort = AppPreferences.getPort(this)
 
         activityScope.launch {
-            val hasRoot = withContext(Dispatchers.IO) { AdbController.isRootAvailable() }
-            if (!hasRoot && enable) {
-                Toast.makeText(this@MainActivity, getString(R.string.toast_root_required), Toast.LENGTH_LONG).show()
-            }
-
-            // 异步操作期间临时禁用 Switch 控件，防止连续快速点击造成多 Root Shell 竞态
+            // 异步操作期间临时禁用 Switch 控件，防止连续快速点击造成竞态
             switchAdb.isEnabled = false
 
             try {
-                if (enable) {
-                    val success = AdbController.startWirelessAdb(configuredPort)
-                    if (success) {
-                        Toast.makeText(this@MainActivity, getString(R.string.toast_adb_started, configuredPort), Toast.LENGTH_SHORT).show()
-                        AdbWirelessService.start(this@MainActivity, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
+                val success = withContext(Dispatchers.IO) {
+                    AdbController.setWirelessDebuggingEnabled(this@MainActivity, enable, configuredPort)
+                }
+                if (success) {
+                    val msg = if (enable) {
+                        val isStaticListening = withContext(Dispatchers.IO) { AdbController.isPortListening(configuredPort) }
+                        val isGlobalEnabled = withContext(Dispatchers.IO) { AdbController.isAdbWifiGlobalEnabled(this@MainActivity) }
+                        val portStr = if (isGlobalEnabled && !isStaticListening) {
+                            withContext(Dispatchers.IO) { AdbController.getDynamicTlsPort() }?.toString() ?: getString(R.string.port_system_dynamic)
+                        } else {
+                            configuredPort.toString()
+                        }
+                        getString(R.string.toast_adb_started, portStr)
                     } else {
-                        Toast.makeText(this@MainActivity, getString(R.string.toast_adb_start_failed), Toast.LENGTH_LONG).show()
+                        getString(R.string.toast_adb_stopped)
                     }
+                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
+                    AdbWirelessService.start(this@MainActivity, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
                 } else {
-                    val success = AdbController.stopWirelessAdb(configuredPort)
-                    if (success) {
-                        Toast.makeText(this@MainActivity, getString(R.string.toast_adb_stopped), Toast.LENGTH_SHORT).show()
-                        AdbWirelessService.start(this@MainActivity, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
+                    if (enable) {
+                        val hasPrivilege = withContext(Dispatchers.IO) {
+                            AdbController.hasWriteSecureSettings(this@MainActivity) || AdbController.isRootAvailable()
+                        }
+                        if (!hasPrivilege) {
+                            Toast.makeText(this@MainActivity, getString(R.string.toast_permission_required_for_wireless), Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(this@MainActivity, getString(R.string.toast_adb_start_failed), Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        Toast.makeText(this@MainActivity, getString(R.string.toast_adb_stop_failed), Toast.LENGTH_SHORT).show()
                     }
                 }
                 refreshNetworkAndAdbInfo()
             } finally {
                 switchAdb.isEnabled = true
             }
-        }
-    }
-
-    private fun copyAdbCommand() {
-        val ip = currentIp
-        val configuredPort = AppPreferences.getPort(this)
-        if (ip.isNullOrBlank()) {
-            Toast.makeText(this, getString(R.string.toast_no_ip), Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val command = NetworkUtils.formatAdbConnectCommand(ip, configuredPort)
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        if (clipboard != null) {
-            val clip = ClipData.newPlainText("ADB Command", command)
-            clipboard.setPrimaryClip(clip)
-            Toast.makeText(this, getString(R.string.toast_copied), Toast.LENGTH_SHORT).show()
         }
     }
 
