@@ -64,7 +64,7 @@
     <string name="card_accessibility_title">无障碍服务</string>
     <string name="status_a11y_active">运行中</string>
     <string name="status_a11y_inactive">未开启</string>
-    <string name="btn_system_settings">系统设置</string>
+    <string name="btn_system_settings">配置</string>
     <string name="desc_a11y_intro">自动检测 RSA 密钥指纹弹窗，自动勾选“一律允许”并点击确认。</string>
     <string name="accessibility_service_description">WiFi ADB 无障碍辅助服务，在连接新电脑调试时自动确认并允许调试授权弹窗。</string>
     <string name="toast_a11y_silent_success">无障碍服务已静默切换</string>
@@ -149,10 +149,10 @@
     <string name="btn_copy_device_info">复制设备信息</string>
     <string name="toast_device_info_copied">已复制设备信息到剪贴板</string>
 
-    <!-- 无障碍 dadb Shell 授权 -->
-    <string name="btn_a11y_dadb_grant">dadb Shell 授权</string>
-    <string name="toast_a11y_dadb_grant_success">已通过 dadb Shell 授权开启无障碍服务</string>
-    <string name="toast_a11y_dadb_grant_failed">dadb Shell 授权失败，请确认无线调试是否已开启</string>
+    <!-- 无障碍 ADB 授权 -->
+    <string name="btn_a11y_dadb_grant">ADB授权</string>
+    <string name="toast_a11y_dadb_grant_success">已通过 ADB 授权开启无障碍服务</string>
+    <string name="toast_a11y_dadb_grant_failed">ADB 授权失败，请确认无线调试是否已开启</string>
 
     <!-- 关于页面 -->
     <string name="title_about">关于 WiFi ADB</string>

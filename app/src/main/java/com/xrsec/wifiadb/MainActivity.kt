@@ -82,6 +82,7 @@ class MainActivity : Activity() {
 
         initViews()
         setupListeners()
+        refreshAccessibilityStatus()
     }
 
     override fun onResume() {
@@ -471,17 +472,13 @@ class MainActivity : Activity() {
             }
             currentIp = ip
             val (isAdbActive, displayPort) = withContext(Dispatchers.IO) {
-                val isStaticListening = AdbController.isPortListening(configuredPort)
-                val isGlobalEnabled = AdbController.isAdbWifiGlobalEnabled(this@MainActivity)
-                val active = isGlobalEnabled || isStaticListening
-
-                val portStr = if (isGlobalEnabled && !isStaticListening) {
-                    val dynPort = AdbController.getDynamicTlsPort()
-                    dynPort?.toString() ?: getString(R.string.port_system_dynamic)
+                val info = AdbController.getActivePortInfo(this@MainActivity, configuredPort)
+                val portStr = if (info.isSystemWireless) {
+                    if (info.port > 0) info.port.toString() else getString(R.string.port_system_dynamic)
                 } else {
                     configuredPort.toString()
                 }
-                Pair(active, portStr)
+                Pair(info.isActive, portStr)
             }
 
             tvWifiName.text = if (ssid.isNotBlank()) {
@@ -549,6 +546,12 @@ class MainActivity : Activity() {
                     } else {
                         Toast.makeText(this@MainActivity, getString(R.string.toast_adb_stop_failed), Toast.LENGTH_SHORT).show()
                     }
+                    val currentActive = withContext(Dispatchers.IO) {
+                        AdbController.isAdbWirelessActive(this@MainActivity, configuredPort)
+                    }
+                    isUpdatingUi = true
+                    switchAdb.isChecked = currentActive
+                    isUpdatingUi = false
                 }
                 refreshNetworkAndAdbInfo()
             } finally {
@@ -562,6 +565,7 @@ class MainActivity : Activity() {
     // ==========================================
     private fun refreshAccessibilityStatus() {
         val isA11yActive = WifiAdbAccessibilityService.isServiceEnabled(this)
+        btnA11yDadbGrant.visibility = if (isA11yActive) View.GONE else View.VISIBLE
         isUpdatingUi = true
         if (isA11yActive) {
             tvA11yStatus.text = getString(R.string.status_a11y_active)
@@ -648,6 +652,7 @@ class MainActivity : Activity() {
                     val ex = result.exceptionOrNull()
                     val msg = ex?.message?.takeIf { it.isNotBlank() } ?: getString(R.string.toast_a11y_dadb_grant_failed)
                     Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+                    refreshAccessibilityStatus()
                 }
             } finally {
                 btnA11yDadbGrant.isEnabled = true

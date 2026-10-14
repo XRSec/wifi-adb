@@ -556,16 +556,22 @@ object AdbController {
             return@withContext ActivePortInfo(isActive = true, port = DEFAULT_PORT, isSystemWireless = false)
         }
 
-        // 4. 未启动
+        // 4. 兜底检测系统动态 TLS 端口是否仍在监听
+        val tlsPort = getDynamicTlsPort()
+        if (tlsPort != null && tlsPort > 0 && isPortListening(tlsPort)) {
+            return@withContext ActivePortInfo(isActive = true, port = tlsPort, isSystemWireless = true)
+        }
+
+        // 5. 未启动
         ActivePortInfo(isActive = false, port = configuredPort, isSystemWireless = false)
     }
 
     /**
      * 判断无线调试是否处于活跃状态：
-     * 判定准则：系统全局设置 adb_wifi_enabled == 1 或本地 Loopback Socket 探针连通。
+     * 判定准则：基于 getActivePortInfo 综合判定（系统全局设置 adb_wifi_enabled == 1 或本地 Socket 监听活跃）。
      */
     suspend fun isAdbWirelessActive(context: Context, port: Int = DEFAULT_PORT): Boolean = withContext(Dispatchers.IO) {
-        isAdbWifiGlobalEnabled(context) || isPortListening(port)
+        getActivePortInfo(context, port).isActive
     }
 
     suspend fun isAdbWirelessActive(port: Int = DEFAULT_PORT): Boolean = withContext(Dispatchers.IO) {
@@ -574,39 +580,97 @@ object AdbController {
 
     /**
      * 真实控制系统无线调试状态：
-     * 1. 尝试通过 WRITE_SECURE_SETTINGS 写入 Settings.Global.adb_wifi_enabled (Android 11+ 系统真实开关)
-     * 2. 若具备 Root，同时配合 setprop service.adb.tcp.port 并重启 adbd
-     * 3. 联动 AdbWirelessService 前台通知服务
+     * 1. 当 enable == true 时：
+     *    - 尝试通过 WRITE_SECURE_SETTINGS 写入 Settings.Global.adb_wifi_enabled = 1
+     *    - 若具备 Root，同时执行 setprop service.adb.tcp.port 并重启 adbd
+     * 2. 当 enable == false 时：
+     *    - 尝试通过 WRITE_SECURE_SETTINGS 写入 Settings.Global.adb_wifi_enabled = 0
+     *    - 若具备 Root，同时执行 settings put global adb_wifi_enabled 0、setprop -1 与重启 adbd
+     *    - 若尚未关闭且 dadb 可连通（通过活跃端口与本地 ADB 密钥），通过 dadb shell 执行关闭
+     * 3. 联动 AdbWirelessService 前台服务
+     * 4. 轮询最多 1.5 秒验证是否达成目标状态 (isAdbWirelessActive == enable)，返回最终布尔结果
      */
     suspend fun setWirelessDebuggingEnabled(context: Context, enable: Boolean, port: Int = DEFAULT_PORT): Boolean = withContext(Dispatchers.IO) {
-        var anyActionTaken = false
+        if (enable) {
+            // 1. 系统设置真实开关 (需要 WRITE_SECURE_SETTINGS)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    Settings.Global.putInt(context.contentResolver, "adb_wifi_enabled", 1)
+                } catch (_: Throwable) {}
+            }
 
-        // 1. 系统设置真实开关 (需要 WRITE_SECURE_SETTINGS)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                val globalVal = if (enable) 1 else 0
-                val success = Settings.Global.putInt(context.contentResolver, "adb_wifi_enabled", globalVal)
-                if (success) anyActionTaken = true
-            } catch (_: Throwable) {}
-        }
-
-        // 2. 若具备 Root，同时执行 setprop 与 adbd 重启
-        if (ShellUtils.isRootAvailable()) {
-            val rootSuccess = if (enable) {
+            // 2. 若具备 Root，同时执行 setprop 与 adbd 重启
+            if (ShellUtils.isRootAvailable()) {
                 startWirelessAdb(port)
-            } else {
+            }
+        } else {
+            // 1. 系统设置真实开关 (若具备 WRITE_SECURE_SETTINGS)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    Settings.Global.putInt(context.contentResolver, "adb_wifi_enabled", 0)
+                } catch (_: Throwable) {}
+            }
+
+            // 2. 若具备 Root，同时执行 settings put global adb_wifi_enabled 0、setprop 与 adbd 重启
+            if (ShellUtils.isRootAvailable()) {
                 stopWirelessAdb(port)
             }
-            if (rootSuccess) anyActionTaken = true
+
+            // 3. 若尚未关闭且 dadb 可连通（通过活跃端口与本地 ADB 密钥），通过 dadb shell 执行关闭
+            if (isAdbWirelessActive(context, port)) {
+                val candidates = mutableListOf<Int>()
+                if (isPortListening(port)) candidates.add(port)
+                val dynPort = getDynamicTlsPort()
+                if (dynPort != null && dynPort > 0 && isPortListening(dynPort)) candidates.add(dynPort)
+                if (port != DEFAULT_PORT && isPortListening(DEFAULT_PORT)) candidates.add(DEFAULT_PORT)
+
+                if (candidates.isNotEmpty()) {
+                    try {
+                        val keyPair = try {
+                            getAdbKeyPair(context)
+                        } catch (e: Throwable) {
+                            if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+                            null
+                        }
+                        if (keyPair != null) {
+                            for (candidatePort in candidates.distinct()) {
+                                try {
+                                    val dadb = Dadb.create(
+                                        host = "127.0.0.1",
+                                        port = candidatePort,
+                                        keyPair = keyPair,
+                                        connectTimeout = 1000,
+                                        socketTimeout = 2000
+                                    )
+                                    dadb.use { client ->
+                                        client.shell("settings put global adb_wifi_enabled 0")
+                                        runCatching { client.shell("setprop service.adb.tcp.port -1") }
+                                    }
+                                    break
+                                } catch (_: Throwable) {}
+                            }
+                        }
+                    } catch (_: Throwable) {}
+                }
+            }
         }
 
-        // 3. 联动 AdbWirelessService 前台服务
+        // 联动 AdbWirelessService 前台服务
         try {
             AdbWirelessService.start(context, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
         } catch (_: Throwable) {}
 
-        delay(300)
-        isAdbWirelessActive(context, port)
+        // 轮询验证目标状态是否达成，最多 1.5 秒 (5 * 300ms)
+        val targetState = enable
+        var matched = false
+        for (i in 0 until 5) {
+            delay(300)
+            if (isAdbWirelessActive(context, port) == targetState) {
+                matched = true
+                break
+            }
+        }
+        matched
     }
 
     /**
@@ -856,7 +920,7 @@ object AdbController {
      * 探针针对目标端口轮询检测，确保自定义端口状态一致。
      */
     suspend fun stopWirelessAdb(port: Int = DEFAULT_PORT): Boolean = withContext(Dispatchers.IO) {
-        val command = "setprop service.adb.tcp.port -1 && stop adbd && start adbd"
+        val command = "settings put global adb_wifi_enabled 0 && setprop service.adb.tcp.port -1 && stop adbd && start adbd"
         val result = ShellUtils.execRoot(command)
         if (!result.isSuccess) {
             return@withContext false

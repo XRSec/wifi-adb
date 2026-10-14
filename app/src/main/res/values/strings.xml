@@ -64,7 +64,7 @@
     <string name="card_accessibility_title">Accessibility Service</string>
     <string name="status_a11y_active">Running</string>
     <string name="status_a11y_inactive">Disabled</string>
-    <string name="btn_system_settings">System Settings</string>
+    <string name="btn_system_settings">Configure</string>
     <string name="desc_a11y_intro">Automatically recognizes RSA fingerprint prompts and confirms debugging dialogs.</string>
     <string name="accessibility_service_description">WiFi ADB Accessibility Service automatically confirms USB/Wireless debugging authorization prompts from authorized computers.</string>
     <string name="toast_a11y_silent_success">Accessibility service updated silently</string>
@@ -149,10 +149,10 @@
     <string name="btn_copy_device_info">Copy Device Info</string>
     <string name="toast_device_info_copied">Device info copied to clipboard</string>
 
-    <!-- A11y dadb Shell Grant -->
-    <string name="btn_a11y_dadb_grant">dadb Shell Grant</string>
-    <string name="toast_a11y_dadb_grant_success">Accessibility service granted and activated via dadb Shell</string>
-    <string name="toast_a11y_dadb_grant_failed">dadb Shell grant failed. Please verify wireless debugging state</string>
+    <!-- A11y ADB Shell Grant -->
+    <string name="btn_a11y_dadb_grant">ADB Grant</string>
+    <string name="toast_a11y_dadb_grant_success">Accessibility service granted and activated via ADB Shell</string>
+    <string name="toast_a11y_dadb_grant_failed">ADB Shell grant failed. Please verify wireless debugging state</string>
 
     <!-- About Activity -->
     <string name="title_about">About WiFi ADB</string>
