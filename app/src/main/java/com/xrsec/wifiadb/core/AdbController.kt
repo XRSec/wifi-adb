@@ -86,7 +86,7 @@ object AdbController {
 
         val newServices = filteredFlattened.joinToString(":")
 
-        // 在同一个 Root 管道中一揽子全部搞定：赋权 + 解除 Android 13+ 受限设置 + 静默激活无障碍服务
+        // 在同一个 Root 管道中一揽子全部搞定：赋权 + 解除 Android 13+ 受限设置 + 静默激活无障碍服务 + 永久禁用授权超时
         val commandsList = mutableListOf(
             "pm grant $pkg android.permission.WRITE_SECURE_SETTINGS"
         )
@@ -95,9 +95,11 @@ object AdbController {
         }
         commandsList.add("settings put secure enabled_accessibility_services \"$newServices\"")
         commandsList.add("settings put secure accessibility_enabled 1")
+        commandsList.add("settings put global adb_allowed_connection_time 0")
         val commands = commandsList.joinToString(" && ")
 
         val res = ShellUtils.execRoot(commands)
+        disableAdbAuthTimeout(context)
         if (res.isSuccess || hasWriteSecureSettings(context)) {
             delay(300)
             hasWriteSecureSettings(context)
@@ -119,12 +121,32 @@ object AdbController {
     }
 
     /**
+     * 禁用 ADB 授权超时 (adb_allowed_connection_time = 0)，
+     * 关闭 Android 11+ 默认的 7 天无连接自动撤销 ADB 授权机制，使设备上的授权永久生效。
+     */
+    fun disableAdbAuthTimeout(context: Context): Boolean {
+        var success = false
+        try {
+            success = Settings.Global.putLong(context.contentResolver, "adb_allowed_connection_time", 0L)
+        } catch (_: Throwable) {}
+
+        try {
+            val res = ShellUtils.exec("settings put global adb_allowed_connection_time 0")
+            if (res.isSuccess) success = true
+        } catch (_: Throwable) {}
+
+        return success
+    }
+
+    /**
      * 一键本地闭环提权：
      * 利用 dadb 连接本地 127.0.0.1:port 发起 ADB 握手，触发系统授权弹窗，
      * 连通后在同一会话中一网打尽：
      * 1. pm grant 授予 WRITE_SECURE_SETTINGS 权限；
      * 2. appops set 解除 Android 13+ 受限设置；
-     * 3. 自动将无障碍服务写入 enabled_accessibility_services 并静默激活！
+     * 3. 自动将无障碍服务写入 enabled_accessibility_services 并静默激活；
+     * 4. 自动将 adb_allowed_connection_time 设为 0（永久不过期）；
+     * 5. 若配置了非默认静态端口，自动切换/固定端口为用户常用端口！
      */
     suspend fun grantWriteSecureSettingsViaDadb(context: Context, port: Int = DEFAULT_PORT): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -174,6 +196,19 @@ object AdbController {
                 client.shell("settings put secure enabled_accessibility_services \"$newServices\"")
                 client.shell("settings put secure accessibility_enabled 1")
 
+                // 4. 自动关闭 7 天无连接撤销授权限制 (设置 adb_allowed_connection_time = 0)
+                client.shell("settings put global adb_allowed_connection_time 0")
+                disableAdbAuthTimeout(context)
+
+                // 5. 连接后自动切换/固定端口至用户配置端口 (默认 5555)
+                val configuredPort = AppPreferences.getPort(context)
+                if (configuredPort > 0) {
+                    runCatching {
+                        client.shell("setprop service.adb.tcp.port $configuredPort")
+                        client.shell("setprop ctl.restart adbd")
+                    }
+                }
+
                 // 同步利用 ContentResolver 刷新，确保系统即时反映状态
                 runCatching {
                     Settings.Secure.putString(
@@ -198,6 +233,143 @@ object AdbController {
         } catch (e: Throwable) {
             if (e is kotlin.coroutines.cancellation.CancellationException) throw e
             Result.failure(e)
+        }
+    }
+
+    /**
+     * 专属实体按钮操作：通过 dadb Shell（或 Root）会话一键激活无障碍服务。
+     * 在后台直接启动 dadb/Root 执行：
+     *   settings put secure enabled_accessibility_services ...
+     *   settings put secure accessibility_enabled 1
+     *   appops set com.xrsec.wifiadb ACCESS_RESTRICTED_SETTINGS allow
+     *   settings put global adb_allowed_connection_time 0
+     */
+    suspend fun grantAccessibilityViaDadbShell(context: Context, port: Int = DEFAULT_PORT): Result<Unit> = withContext(Dispatchers.IO) {
+        val pkg = context.packageName
+        val targetComponent = ComponentName(context, "$pkg.service.WifiAdbAccessibilityService")
+        val targetFlattened = targetComponent.flattenToString()
+
+        val currentServicesStr = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: ""
+
+        val currentComponents = currentServicesStr.split(":")
+            .filter { it.isNotBlank() }
+            .mapNotNull { ComponentName.unflattenFromString(it) }
+
+        val filteredFlattened = currentComponents.filterNot {
+            it.packageName == targetComponent.packageName && it.className == targetComponent.className
+        }.map { it.flattenToString() }.toMutableList()
+        filteredFlattened.add(targetFlattened)
+
+        val newServices = filteredFlattened.joinToString(":")
+
+        // 优先使用 Root 极速通道
+        if (ShellUtils.isRootAvailable()) {
+            val cmdList = mutableListOf(
+                "settings put secure enabled_accessibility_services \"$newServices\"",
+                "settings put secure accessibility_enabled 1",
+                "settings put global adb_allowed_connection_time 0"
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                cmdList.add("appops set $pkg ACCESS_RESTRICTED_SETTINGS allow")
+            }
+            val res = ShellUtils.execRoot(cmdList.joinToString(" && "))
+            if (res.isSuccess) {
+                disableAdbAuthTimeout(context)
+                delay(300)
+                return@withContext Result.success(Unit)
+            }
+        }
+
+        // dadb 通道
+        try {
+            val keyPair = try {
+                getAdbKeyPair(context)
+            } catch (e: Throwable) {
+                if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+                regenerateAdbKey(context)
+                getAdbKeyPair(context)
+            }
+
+            val dadb = Dadb.create(
+                host = "127.0.0.1",
+                port = port,
+                keyPair = keyPair,
+                connectTimeout = 5000,
+                socketTimeout = 30000
+            )
+            dadb.use { client ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    runCatching { client.shell("appops set $pkg ACCESS_RESTRICTED_SETTINGS allow") }
+                }
+                client.shell("settings put secure enabled_accessibility_services \"$newServices\"")
+                client.shell("settings put secure accessibility_enabled 1")
+                client.shell("settings put global adb_allowed_connection_time 0")
+
+                // 尝试切换/固定端口为用户设定的常用端口
+                val configuredPort = AppPreferences.getPort(context)
+                if (configuredPort > 0 && configuredPort != port) {
+                    runCatching {
+                        client.shell("setprop service.adb.tcp.port $configuredPort")
+                        client.shell("setprop ctl.restart adbd")
+                    }
+                }
+
+                // 同步通过 ContentResolver 刷新
+                runCatching {
+                    Settings.Secure.putString(
+                        context.contentResolver,
+                        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                        newServices
+                    )
+                    Settings.Secure.putInt(
+                        context.contentResolver,
+                        Settings.Secure.ACCESSIBILITY_ENABLED,
+                        1
+                    )
+                }
+                disableAdbAuthTimeout(context)
+                delay(300)
+                Result.success(Unit)
+            }
+        } catch (e: Throwable) {
+            if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 将系统动态 TLS 端口锁定/切换为用户配置的目标静态端口（默认 5555）
+     */
+    suspend fun fixAdbTcpPort(context: Context, targetPort: Int = DEFAULT_PORT, connectPort: Int = DEFAULT_PORT): Boolean = withContext(Dispatchers.IO) {
+        if (ShellUtils.isRootAvailable()) {
+            val cmd = "setprop service.adb.tcp.port $targetPort && stop adbd && start adbd"
+            val res = ShellUtils.execRoot(cmd)
+            if (res.isSuccess) {
+                delay(500)
+                return@withContext isPortListening(targetPort)
+            }
+        }
+
+        try {
+            val keyPair = getAdbKeyPair(context)
+            Dadb.create(
+                host = "127.0.0.1",
+                port = connectPort,
+                keyPair = keyPair,
+                connectTimeout = 3000,
+                socketTimeout = 5000
+            ).use { client ->
+                client.shell("setprop service.adb.tcp.port $targetPort")
+                runCatching { client.shell("setprop ctl.restart adbd") }
+                runCatching { client.shell("stop adbd; start adbd") }
+            }
+            delay(500)
+            isPortListening(targetPort)
+        } catch (_: Throwable) {
+            false
         }
     }
 
@@ -544,6 +716,111 @@ object AdbController {
         } catch (_: Throwable) {
             false
         }
+    }
+
+    /**
+     * 获取当前私钥 adbkey 的明文文本内容。
+     * 若私钥已加密，自动通过 AppPreferences 中的 Passphrase 进行解密还原；
+     * 若解密失败（密码错误或文件损坏），返回空字符串避免显示乱码密文。
+     */
+    fun getAdbPrivateKeyString(context: Context): String {
+        val privFile = File(context.filesDir, "adbkey")
+        val pubFile = File(context.filesDir, "adbkey.pub")
+        if (!privFile.exists() || !pubFile.exists() || privFile.length() == 0L || pubFile.length() == 0L) {
+            regenerateAdbKey(context)
+        }
+        val privBytes = privFile.readBytes()
+        val passphrase = AppPreferences.getAdbKeyPassphrase(context)
+        val plainBytes = if (KeyCryptoUtil.isEncrypted(privBytes)) {
+            runCatching { KeyCryptoUtil.decrypt(privBytes, passphrase) }.getOrNull() ?: return ""
+        } else {
+            privBytes
+        }
+        return plainBytes.toString(Charsets.UTF_8).trim()
+    }
+
+    /**
+     * 获取当前公钥 adbkey.pub 的文本内容。
+     */
+    fun getAdbPublicKeyString(context: Context): String {
+        val pubFile = File(context.filesDir, "adbkey.pub")
+        val privFile = File(context.filesDir, "adbkey")
+        if (!pubFile.exists() || !privFile.exists() || pubFile.length() == 0L || privFile.length() == 0L) {
+            regenerateAdbKey(context)
+        }
+        return pubFile.readText(Charsets.UTF_8).trim()
+    }
+
+    /**
+     * 保存用户在输入框中自定义/粘贴的 adbkey 与 adbkey.pub 内容。
+     * 在写入磁盘真实文件之前，先将明文写入临时文件通过 AdbKeyPair.read 进行预校验；
+     * 校验失败立即抛出异常并安全擦除临时文件，绝不破坏现有磁盘密钥。
+     * 校验成功后执行 privFile.delete() 与 pubFile.delete() 切断符号链接，再原子落盘。
+     * 若已配置 Passphrase，私钥将加密落盘；公钥以标准明文格式保存。
+     * 返回更新后的公钥 SHA-256 指纹。
+     */
+    fun saveAdbKeyPairCustom(context: Context, privContent: String, pubContent: String): String {
+        val privClean = privContent.trim()
+        val pubClean = pubContent.trim()
+        require(privClean.isNotBlank()) { "Private key cannot be empty" }
+        require(pubClean.isNotBlank()) { "Public key cannot be empty" }
+
+        val rawPrivBytes = privClean.toByteArray(Charsets.UTF_8)
+        val tempPriv = File.createTempFile("val_priv_", ".tmp", context.cacheDir)
+        val tempPub = File.createTempFile("val_pub_", ".tmp", context.cacheDir)
+
+        try {
+            tempPriv.writeBytes(rawPrivBytes)
+            tempPub.writeText(pubClean + "\n", Charsets.UTF_8)
+            try {
+                AdbKeyPair.read(tempPriv, tempPub)
+            } catch (e: Throwable) {
+                throw IllegalArgumentException("Invalid ADB key format", e)
+            }
+        } finally {
+            runCatching {
+                if (tempPriv.exists()) {
+                    val len = tempPriv.length().toInt()
+                    if (len > 0) {
+                        val wipe = ByteArray(len)
+                        SecureRandom().nextBytes(wipe)
+                        tempPriv.writeBytes(wipe)
+                    }
+                    tempPriv.delete()
+                }
+            }
+            runCatching {
+                if (tempPub.exists()) {
+                    tempPub.delete()
+                }
+            }
+        }
+
+        val privFile = File(context.filesDir, "adbkey")
+        val pubFile = File(context.filesDir, "adbkey.pub")
+        val passphrase = AppPreferences.getAdbKeyPassphrase(context)
+
+        val finalPrivBytes = if (passphrase.isNotBlank()) {
+            KeyCryptoUtil.encrypt(rawPrivBytes, passphrase)
+        } else {
+            rawPrivBytes
+        }
+
+        privFile.delete()
+        pubFile.delete()
+
+        privFile.writeBytes(finalPrivBytes)
+        pubFile.writeText(pubClean + "\n", Charsets.UTF_8)
+
+        return getAdbPublicKeyFingerprint(context)
+    }
+
+    /**
+     * 重新生成本地 ADB 密钥对并返回生成的私钥和公钥文本对。
+     */
+    fun generateNewAdbKeyPairStrings(context: Context): Pair<String, String> {
+        regenerateAdbKey(context)
+        return Pair(getAdbPrivateKeyString(context), getAdbPublicKeyString(context))
     }
 
     /**

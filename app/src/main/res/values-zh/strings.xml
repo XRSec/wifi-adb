@@ -127,14 +127,32 @@
     <!-- 设置卡片 5: ADB 密钥管理 -->
     <string name="card_adb_key_title">ADB 密钥管理</string>
     <string name="label_adb_fingerprint">本地 ADB 公钥指纹 (SHA-256):</string>
+    <string name="label_adb_private_key">私钥 (adbkey):</string>
+    <string name="label_adb_public_key">公钥 (adbkey.pub):</string>
     <string name="label_adb_passphrase">密钥加密密码 (可选):</string>
     <string name="hint_adb_passphrase">留空表示不设置密码</string>
-    <string name="desc_adb_key">本地 ADB 密钥用于与本机或局域网无线调试服务握手。重新生成密钥可重置本地通信凭证。</string>
+    <string name="desc_adb_key">本地 ADB 密钥用于与本机或局域网无线调试服务握手。可直接粘贴电脑端已授信的密钥对，或点击重新生成。</string>
+    <string name="btn_save_adb_key">保存并应用密钥</string>
     <string name="btn_regenerate_adb_key">重新生成密钥</string>
+    <string name="btn_copy_public_key">复制公钥</string>
     <string name="dialog_regenerate_key_title">确认重新生成 ADB 密钥？</string>
     <string name="dialog_regenerate_key_msg">重新生成 ADB 密钥将覆盖当前的私钥与公钥。后续连接时需要重新进行调试授权确认。是否确定重新生成？</string>
     <string name="toast_key_regenerated">已成功重新生成 ADB 密钥</string>
+    <string name="toast_key_saved">ADB 密钥已成功保存并应用</string>
+    <string name="toast_public_key_copied">公钥内容已复制到剪贴板</string>
+    <string name="toast_key_empty">私钥和公钥内容均不能为空</string>
+    <string name="toast_key_invalid">ADB 密钥格式无效或公私钥不匹配</string>
     <string name="btn_save_settings">保存设置</string>
+
+    <!-- 设备信息 -->
+    <string name="card_device_info_title">设备信息</string>
+    <string name="btn_copy_device_info">复制设备信息</string>
+    <string name="toast_device_info_copied">已复制设备信息到剪贴板</string>
+
+    <!-- 无障碍 dadb Shell 授权 -->
+    <string name="btn_a11y_dadb_grant">dadb Shell 授权</string>
+    <string name="toast_a11y_dadb_grant_success">已通过 dadb Shell 授权开启无障碍服务</string>
+    <string name="toast_a11y_dadb_grant_failed">dadb Shell 授权失败，请确认无线调试是否已开启</string>
 
     <!-- 关于页面 -->
     <string name="title_about">关于 WiFi ADB</string>

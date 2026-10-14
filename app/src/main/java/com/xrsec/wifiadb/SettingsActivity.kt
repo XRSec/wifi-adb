@@ -1,6 +1,8 @@
 package com.xrsec.wifiadb
 
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -48,7 +50,11 @@ class SettingsActivity : ComponentActivity() {
 
     // 卡片五：ADB 密钥管理
     private lateinit var tvAdbFingerprint: TextView
+    private lateinit var etAdbPrivateKey: EditText
+    private lateinit var etAdbPublicKey: EditText
     private lateinit var etAdbPassphrase: EditText
+    private lateinit var btnSaveAdbKey: Button
+    private lateinit var btnCopyPublicKey: Button
     private lateinit var btnRegenerateKey: Button
 
     // 底部保存
@@ -96,7 +102,11 @@ class SettingsActivity : ComponentActivity() {
 
         // 卡片五
         tvAdbFingerprint = findViewById(R.id.tv_adb_fingerprint)
+        etAdbPrivateKey = findViewById(R.id.et_adb_private_key)
+        etAdbPublicKey = findViewById(R.id.et_adb_public_key)
         etAdbPassphrase = findViewById(R.id.et_adb_passphrase)
+        btnSaveAdbKey = findViewById(R.id.btn_save_adb_key)
+        btnCopyPublicKey = findViewById(R.id.btn_copy_public_key)
         btnRegenerateKey = findViewById(R.id.btn_regenerate_adb_key)
 
         // 保存
@@ -119,8 +129,12 @@ class SettingsActivity : ComponentActivity() {
     private fun loadAdbKeyInfo() {
         lifecycleScope.launch(Dispatchers.IO) {
             val fingerprint = AdbController.getAdbPublicKeyFingerprint(this@SettingsActivity)
+            val privKey = AdbController.getAdbPrivateKeyString(this@SettingsActivity)
+            val pubKey = AdbController.getAdbPublicKeyString(this@SettingsActivity)
             withContext(Dispatchers.Main) {
                 tvAdbFingerprint.text = fingerprint
+                etAdbPrivateKey.setText(privKey)
+                etAdbPublicKey.setText(pubKey)
             }
         }
     }
@@ -157,6 +171,40 @@ class SettingsActivity : ComponentActivity() {
             }
         }
 
+        btnSaveAdbKey.setOnClickListener {
+            val priv = etAdbPrivateKey.text.toString().trim()
+            val pub = etAdbPublicKey.text.toString().trim()
+            if (priv.isBlank() || pub.isBlank()) {
+                Toast.makeText(this, getString(R.string.toast_key_empty), Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            btnSaveAdbKey.isEnabled = false
+            lifecycleScope.launch(Dispatchers.IO) {
+                val result = runCatching {
+                    AdbController.saveAdbKeyPairCustom(this@SettingsActivity, priv, pub)
+                }
+                withContext(Dispatchers.Main) {
+                    btnSaveAdbKey.isEnabled = true
+                    result.onSuccess { newFp ->
+                        tvAdbFingerprint.text = newFp
+                        Toast.makeText(this@SettingsActivity, getString(R.string.toast_key_saved), Toast.LENGTH_SHORT).show()
+                    }.onFailure {
+                        Toast.makeText(this@SettingsActivity, getString(R.string.toast_key_invalid), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        btnCopyPublicKey.setOnClickListener {
+            val pub = etAdbPublicKey.text.toString().trim()
+            if (pub.isNotBlank()) {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                val clip = ClipData.newPlainText("ADB Public Key", pub)
+                clipboard?.setPrimaryClip(clip)
+                Toast.makeText(this, getString(R.string.toast_public_key_copied), Toast.LENGTH_SHORT).show()
+            }
+        }
+
         btnRegenerateKey.setOnClickListener {
             AlertDialog.Builder(this)
                 .setTitle(R.string.dialog_regenerate_key_title)
@@ -164,8 +212,11 @@ class SettingsActivity : ComponentActivity() {
                 .setPositiveButton(R.string.btn_confirm) { _, _ ->
                     btnRegenerateKey.isEnabled = false
                     lifecycleScope.launch(Dispatchers.IO) {
-                        val newFingerprint = AdbController.regenerateAdbKey(this@SettingsActivity)
+                        val (newPriv, newPub) = AdbController.generateNewAdbKeyPairStrings(this@SettingsActivity)
+                        val newFingerprint = AdbController.getAdbPublicKeyFingerprint(this@SettingsActivity)
                         withContext(Dispatchers.Main) {
+                            etAdbPrivateKey.setText(newPriv)
+                            etAdbPublicKey.setText(newPub)
                             tvAdbFingerprint.text = newFingerprint
                             btnRegenerateKey.isEnabled = true
                             Toast.makeText(this@SettingsActivity, getString(R.string.toast_key_regenerated), Toast.LENGTH_SHORT).show()

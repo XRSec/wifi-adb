@@ -63,6 +63,63 @@
         </LinearLayout>
 
         <!-- ============================================== -->
+        <!-- 设备信息卡片 (Device Information) -->
+        <!-- ============================================== -->
+        <LinearLayout
+            style="@style/CardStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/SectionTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:paddingBottom="0dp"
+                    android:text="@string/card_device_info_title" />
+
+                <Button
+                    android:id="@+id/btn_copy_device_info"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:background="@drawable/bg_button_outline"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="@string/btn_copy_device_info"
+                    android:textColor="@color/primary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_device_model_system"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="6dp"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_device_serial_abi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="2dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- ============================================== -->
         <!-- 卡片一：系统权限授权 (System Permission) -->
         <!-- ============================================== -->
         <LinearLayout
@@ -249,13 +306,24 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
 
-            <!-- Action Area: Config & Switch -->
+            <!-- Action Area: Config, dadb Shell Grant & Switch -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingTop="4dp">
+
+                <Button
+                    android:id="@+id/btn_a11y_dadb_grant"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_button_outline"
+                    android:minWidth="64dp"
+                    android:text="@string/btn_a11y_dadb_grant"
+                    android:textColor="@color/primary"
+                    android:textSize="13sp" />
 
                 <Button
                     android:id="@+id/btn_config_a11y"

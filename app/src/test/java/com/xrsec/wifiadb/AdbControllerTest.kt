@@ -28,4 +28,34 @@ class AdbControllerTest {
             org.junit.Assert.assertTrue(port > 0)
         }
     }
+
+    @Test(expected = Exception::class)
+    fun testAdbKeyPairReadWithInvalidKeyFails() {
+        val tempPriv = java.io.File.createTempFile("test_priv_", ".tmp")
+        val tempPub = java.io.File.createTempFile("test_pub_", ".tmp")
+        try {
+            tempPriv.writeText("INVALID NOT A PRIVATE KEY")
+            tempPub.writeText("INVALID NOT A PUBLIC KEY")
+            dadb.AdbKeyPair.read(tempPriv, tempPub)
+        } finally {
+            tempPriv.delete()
+            tempPub.delete()
+        }
+    }
+
+    @Test
+    fun testAdbKeyPairGenerateAndReadValid() {
+        val tempPriv = java.io.File.createTempFile("test_priv_", ".tmp")
+        val tempPub = java.io.File.createTempFile("test_pub_", ".tmp")
+        try {
+            dadb.AdbKeyPair.generate(tempPriv, tempPub, "test@wifi-adb")
+            val keyPair = dadb.AdbKeyPair.read(tempPriv, tempPub)
+            org.junit.Assert.assertNotNull(keyPair)
+            org.junit.Assert.assertNotNull(keyPair.privateKey())
+            org.junit.Assert.assertTrue(keyPair.adbPublicKey().isNotEmpty())
+        } finally {
+            tempPriv.delete()
+            tempPub.delete()
+        }
+    }
 }

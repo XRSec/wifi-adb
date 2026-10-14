@@ -32,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import com.xrsec.wifiadb.util.DeviceInfoHelper
 import kotlinx.coroutines.withContext
 
 class MainActivity : Activity() {
@@ -39,6 +40,11 @@ class MainActivity : Activity() {
     // 顶部导航
     private lateinit var btnSettings: ImageButton
     private lateinit var btnAbout: ImageButton
+
+    // 设备信息卡片
+    private lateinit var tvDeviceModelSystem: TextView
+    private lateinit var tvDeviceSerialAbi: TextView
+    private lateinit var btnCopyDeviceInfo: Button
 
     // 卡片一：系统权限
     private lateinit var tvPermissionStatus: TextView
@@ -54,6 +60,7 @@ class MainActivity : Activity() {
 
     // 卡片三：无障碍服务
     private lateinit var tvA11yStatus: TextView
+    private lateinit var btnA11yDadbGrant: Button
     private lateinit var btnConfigA11y: Button
     private lateinit var switchA11y: Switch
 
@@ -103,6 +110,11 @@ class MainActivity : Activity() {
         btnSettings = findViewById(R.id.btn_settings)
         btnAbout = findViewById(R.id.btn_about)
 
+        // 设备信息
+        tvDeviceModelSystem = findViewById(R.id.tv_device_model_system)
+        tvDeviceSerialAbi = findViewById(R.id.tv_device_serial_abi)
+        btnCopyDeviceInfo = findViewById(R.id.btn_copy_device_info)
+
         // 卡片一
         tvPermissionStatus = findViewById(R.id.tv_permission_status)
         tvPermissionDesc = findViewById(R.id.tv_permission_desc)
@@ -117,6 +129,7 @@ class MainActivity : Activity() {
 
         // 卡片三
         tvA11yStatus = findViewById(R.id.tv_a11y_status)
+        btnA11yDadbGrant = findViewById(R.id.btn_a11y_dadb_grant)
         btnConfigA11y = findViewById(R.id.btn_config_a11y)
         switchA11y = findViewById(R.id.switch_a11y)
 
@@ -130,6 +143,15 @@ class MainActivity : Activity() {
 
         btnAbout.setOnClickListener {
             startActivity(Intent(this, AboutActivity::class.java))
+        }
+
+        // 设备信息复制
+        btnCopyDeviceInfo.setOnClickListener {
+            val info = DeviceInfoHelper.getDeviceInfo(this)
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            val clip = ClipData.newPlainText("Device Info", info.getFormattedSummary())
+            clipboard?.setPrimaryClip(clip)
+            Toast.makeText(this, getString(R.string.toast_device_info_copied), Toast.LENGTH_SHORT).show()
         }
 
         // 卡片一：点击授权
@@ -151,6 +173,11 @@ class MainActivity : Activity() {
             }
         }
 
+        // 卡片三：dadb Shell 专属授权按钮
+        btnA11yDadbGrant.setOnClickListener {
+            handleA11yDadbGrant()
+        }
+
         // 卡片三：配置（直达系统无障碍设置）与无障碍开关
         btnConfigA11y.setOnClickListener {
             navigateToAccessibilitySettings()
@@ -169,9 +196,16 @@ class MainActivity : Activity() {
     }
 
     private fun refreshAll() {
+        refreshDeviceInfo()
         refreshPermissionStatus()
         refreshNetworkAndAdbInfo()
         refreshAccessibilityStatus()
+    }
+
+    private fun refreshDeviceInfo() {
+        val info = DeviceInfoHelper.getDeviceInfo(this)
+        tvDeviceModelSystem.text = "${info.modelDisplayName}  |  ${info.systemVersionName}"
+        tvDeviceSerialAbi.text = "Serial: ${info.serialNumber}  |  ABI: ${info.cpuAbi}"
     }
 
     // ==========================================
@@ -187,6 +221,9 @@ class MainActivity : Activity() {
             }
 
             if (hasSecure || hasRoot) {
+                withContext(Dispatchers.IO) {
+                    AdbController.disableAdbAuthTimeout(this@MainActivity)
+                }
                 val statusText = if (hasRoot) {
                     getString(R.string.status_permission_root)
                 } else {
@@ -575,6 +612,46 @@ class MainActivity : Activity() {
             startActivity(intent)
         } catch (_: Throwable) {
             Toast.makeText(this, getString(R.string.toast_cannot_open_accessibility), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun handleA11yDadbGrant() {
+        btnA11yDadbGrant.isEnabled = false
+        activityScope.launch {
+            try {
+                val isRoot = withContext(Dispatchers.IO) { AdbController.isRootAvailable() }
+                val configuredPort = AppPreferences.getPort(this@MainActivity)
+                val activePort = withContext(Dispatchers.IO) {
+                    val dynamic = AdbController.getDynamicTlsPort()
+                    when {
+                        dynamic != null && dynamic > 0 -> dynamic
+                        AdbController.isPortListening(configuredPort) -> configuredPort
+                        AdbController.isPortListening(5555) -> 5555
+                        else -> null
+                    }
+                }
+
+                if (!isRoot && activePort == null) {
+                    Toast.makeText(this@MainActivity, getString(R.string.toast_a11y_dadb_grant_failed), Toast.LENGTH_LONG).show()
+                    showDadbPortInputDialog(configuredPort)
+                    return@launch
+                }
+
+                val targetPort = activePort ?: configuredPort
+                val result = AdbController.grantAccessibilityViaDadbShell(this@MainActivity, targetPort)
+
+                if (result.isSuccess || WifiAdbAccessibilityService.isServiceEnabled(this@MainActivity)) {
+                    Toast.makeText(this@MainActivity, getString(R.string.toast_a11y_dadb_grant_success), Toast.LENGTH_SHORT).show()
+                    refreshAccessibilityStatus()
+                    refreshPermissionStatus()
+                } else {
+                    val ex = result.exceptionOrNull()
+                    val msg = ex?.message?.takeIf { it.isNotBlank() } ?: getString(R.string.toast_a11y_dadb_grant_failed)
+                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+                }
+            } finally {
+                btnA11yDadbGrant.isEnabled = true
+            }
         }
     }
 }

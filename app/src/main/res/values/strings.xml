@@ -127,14 +127,32 @@
     <!-- Settings Card 5: ADB Key Management -->
     <string name="card_adb_key_title">ADB Key Management</string>
     <string name="label_adb_fingerprint">Public Key Fingerprint (SHA-256):</string>
+    <string name="label_adb_private_key">Private Key (adbkey):</string>
+    <string name="label_adb_public_key">Public Key (adbkey.pub):</string>
     <string name="label_adb_passphrase">Key Passphrase (Optional):</string>
     <string name="hint_adb_passphrase">Leave blank for no passphrase</string>
-    <string name="desc_adb_key">The local ADB key pair is used to authorize loopback requests. Regenerating the key pair will reset your authentication credentials.</string>
+    <string name="desc_adb_key">The local ADB key pair is used to authorize loopback requests. You can edit/paste existing keys or generate a new key pair.</string>
+    <string name="btn_save_adb_key">Save &amp; Apply Key</string>
     <string name="btn_regenerate_adb_key">Regenerate Key</string>
+    <string name="btn_copy_public_key">Copy Public Key</string>
     <string name="dialog_regenerate_key_title">Regenerate ADB Key?</string>
     <string name="dialog_regenerate_key_msg">Regenerating the ADB key will overwrite your current key pair. You will need to re-authorize when connecting locally or remotely. Continue?</string>
     <string name="toast_key_regenerated">New ADB key generated successfully</string>
+    <string name="toast_key_saved">ADB key pair saved and applied</string>
+    <string name="toast_public_key_copied">Public key copied to clipboard</string>
+    <string name="toast_key_empty">Private key and public key cannot be empty</string>
+    <string name="toast_key_invalid">Invalid ADB key format or key pair mismatch</string>
     <string name="btn_save_settings">Save Settings</string>
+
+    <!-- Device Info -->
+    <string name="card_device_info_title">Device Information</string>
+    <string name="btn_copy_device_info">Copy Device Info</string>
+    <string name="toast_device_info_copied">Device info copied to clipboard</string>
+
+    <!-- A11y dadb Shell Grant -->
+    <string name="btn_a11y_dadb_grant">dadb Shell Grant</string>
+    <string name="toast_a11y_dadb_grant_success">Accessibility service granted and activated via dadb Shell</string>
+    <string name="toast_a11y_dadb_grant_failed">dadb Shell grant failed. Please verify wireless debugging state</string>
 
     <!-- About Activity -->
     <string name="title_about">About WiFi ADB</string>
