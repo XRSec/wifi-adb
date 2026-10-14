@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WiFi ADB</string>
+    <string name="app_subtitle">Android 4.4+ 无线调试管理</string>
+
+    <!-- 导航 / 顶部栏 -->
+    <string name="btn_settings">设置</string>
+    <string name="btn_about">关于</string>
+    <string name="btn_back">返回</string>
+
+    <!-- 网络状态区域 -->
+    <string name="section_network_title">当前网络环境</string>
+    <string name="label_wifi_ssid">WiFi 名称 (SSID):</string>
+    <string name="label_device_ip">设备 IP 地址:</string>
+    <string name="text_not_connected">未连接 WiFi</string>
+    <string name="text_unknown_ip">--.--.--.--</string>
+
+    <!-- ADB 调试状态区域 -->
+    <string name="section_adb_title">无线调试 (端口 %d)</string>
+    <string name="label_adb_status">调试服务状态:</string>
+    <string name="status_adb_running">端口 %d 已开启 (正在监听)</string>
+    <string name="status_adb_stopped">已关闭 (USB 模式)</string>
+    <string name="label_root_status">Root 权限:</string>
+    <string name="status_root_granted">已获取 Root 权限</string>
+    <string name="status_root_denied">未检测到 Root 权限</string>
+    <string name="btn_start_adb">开启无线调试</string>
+    <string name="btn_stop_adb">关闭无线调试</string>
+    <string name="btn_operating">正在执行操作...</string>
+    <string name="label_connect_command">连接命令:</string>
+    <string name="btn_copy_command">复制</string>
+
+    <!-- 提示消息 -->
+    <string name="toast_copied">已复制连接命令到剪贴板</string>
+    <string name="toast_no_ip">当前未连接有效网络，无法生成连接命令</string>
+    <string name="toast_root_required">开启无线调试需要 Root 权限，请先授予 Root 权限</string>
+    <string name="toast_adb_started">无线调试已成功开启 (端口 %d)</string>
+    <string name="toast_adb_stopped">无线调试已关闭</string>
+    <string name="toast_adb_start_failed">开启无线调试失败，请检查 Root 授权</string>
+    <string name="toast_status_refreshed">状态已刷新</string>
+    <string name="toast_cannot_open_accessibility">无法打开系统无障碍设置页面</string>
+    <string name="toast_port_invalid">请输入 1024 至 65535 之间的有效端口号</string>
+    <string name="toast_settings_saved">设置已保存</string>
+
+    <!-- 无障碍服务 -->
+    <string name="section_accessibility_title">无障碍授权助手</string>
+    <string name="label_accessibility_status">无障碍辅助状态:</string>
+    <string name="status_accessibility_enabled">已开启 (自动处理调试授权弹窗)</string>
+    <string name="status_accessibility_disabled">未开启</string>
+    <string name="btn_open_accessibility">前往开启无障碍服务</string>
+    <string name="accessibility_service_description">WiFi ADB 无障碍辅助服务，在连接新电脑调试时自动确认并允许调试授权弹窗。</string>
+
+    <!-- 底部操作 -->
+    <string name="btn_refresh">刷新状态</string>
+
+    <!-- 前台服务通知 -->
+    <string name="notification_channel_name">WiFi ADB 运行状态</string>
+    <string name="notification_channel_desc">展示无线调试当前运行状态与局域网连接指令</string>
+    <string name="notification_adb_active_title">WiFi ADB 调试已开启</string>
+    <string name="notification_adb_inactive_title">WiFi ADB 调试已关闭</string>
+    <string name="notification_listening_no_ip">端口 %d 监听中，未获取到有效局域网 IP</string>
+    <string name="notification_stopped_hint">无线调试已关闭，点击打开主界面</string>
+    <string name="notification_running_base">WiFi ADB 服务运行中...</string>
+
+    <!-- 设置页面 -->
+    <string name="title_settings">应用设置</string>
+    <string name="section_language_title">语言偏好</string>
+    <string name="lang_system">跟随系统</string>
+    <string name="lang_zh">简体中文</string>
+    <string name="lang_en">English</string>
+    <string name="section_adb_config_title">无线调试配置</string>
+    <string name="label_port">ADB TCP 监听端口:</string>
+    <string name="hint_port">默认: 5555</string>
+    <string name="section_automation_title">自动化设置</string>
+    <string name="label_boot_start">开机自动开启无线调试</string>
+    <string name="desc_boot_start">系统启动完成后自动在后台开启无线调试 (需具备 Root 权限)</string>
+    <string name="label_auto_confirm_adb">无障碍自动允许调试授权</string>
+    <string name="desc_auto_confirm_adb">配合无障碍服务自动勾选“一律允许”并点击确认</string>
+    <string name="btn_save_settings">保存设置</string>
+
+    <!-- 关于页面 -->
+    <string name="title_about">关于 WiFi ADB</string>
+    <string name="app_version_format">版本 %s</string>
+    <string name="section_license_title">非商业开源许可</string>
+    <string name="license_non_commercial_desc">本项目为自由开源软件，仅供个人技术研究、自动化测试与学习交流使用。严禁任何个人或商业机构在未经书面许可的情况下进行二次打包分发、商用牟利或嵌入商业产品中销售。</string>
+    <string name="section_disclaimer_title">法律免责声明</string>
+    <string name="disclaimer_content">本软件“按原样”提供，不提供任何明示或暗示的保证。对于因使用本软件或其生成、调用的调试功能（包括但不限于设备被未经授权访问、系统破坏、安全隐患或数据丢失等）而引起的任何直接或间接法律责任及损失，作者概不负责。</string>
+    <string name="label_github">开源仓库地址:</string>
+    <string name="github_url">https://github.com/XRSec/wifi-adb</string>
+    <string name="btn_open_github">访问 GitHub 仓库</string>
+</resources>

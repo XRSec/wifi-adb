@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -19,6 +20,8 @@ import com.xrsec.wifiadb.core.ShellUtils
 import com.xrsec.wifiadb.service.AdbWirelessService
 import com.xrsec.wifiadb.service.WifiAdbAccessibilityService
 import com.xrsec.wifiadb.service.WifiStateReceiver
+import com.xrsec.wifiadb.util.AppPreferences
+import com.xrsec.wifiadb.util.LocaleHelper
 import com.xrsec.wifiadb.util.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,8 +32,11 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : Activity() {
 
+    private lateinit var btnSettings: ImageButton
+    private lateinit var btnAbout: ImageButton
     private lateinit var tvWifiSsid: TextView
     private lateinit var tvIpAddress: TextView
+    private lateinit var tvSectionAdbTitle: TextView
     private lateinit var tvAdbStatus: TextView
     private lateinit var tvRootStatus: TextView
     private lateinit var btnToggleAdb: Button
@@ -51,6 +57,10 @@ class MainActivity : Activity() {
         }
     }
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -67,12 +77,11 @@ class MainActivity : Activity() {
             }
         }
         val filter = IntentFilter(WifiStateReceiver.ACTION_NETWORK_STATE_CHANGED)
-        ContextCompat.registerReceiver(
-            this,
-            networkReceiver,
-            filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(networkReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(networkReceiver, filter)
+        }
         refreshAll()
     }
 
@@ -90,8 +99,11 @@ class MainActivity : Activity() {
     }
 
     private fun initViews() {
+        btnSettings = findViewById(R.id.btn_settings)
+        btnAbout = findViewById(R.id.btn_about)
         tvWifiSsid = findViewById(R.id.tv_wifi_ssid)
         tvIpAddress = findViewById(R.id.tv_ip_address)
+        tvSectionAdbTitle = findViewById(R.id.tv_section_adb_title)
         tvAdbStatus = findViewById(R.id.tv_adb_status)
         tvRootStatus = findViewById(R.id.tv_root_status)
         btnToggleAdb = findViewById(R.id.btn_toggle_adb)
@@ -103,6 +115,14 @@ class MainActivity : Activity() {
     }
 
     private fun setupListeners() {
+        btnSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
+        btnAbout.setOnClickListener {
+            startActivity(Intent(this, AboutActivity::class.java))
+        }
+
         btnToggleAdb.setOnClickListener {
             toggleAdbWireless()
         }
@@ -117,17 +137,21 @@ class MainActivity : Activity() {
 
         btnRefresh.setOnClickListener {
             refreshAll()
-            Toast.makeText(this, "状态已刷新", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_status_refreshed), Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun refreshAll() {
+        val configuredPort = AppPreferences.getPort(this)
+        tvSectionAdbTitle.text = getString(R.string.section_adb_title, configuredPort)
+
         refreshNetworkStatus()
         refreshAccessibilityStatus()
-        refreshRootAndAdbStatus()
+        refreshRootAndAdbStatus(configuredPort)
     }
 
     private fun refreshNetworkStatus() {
+        val configuredPort = AppPreferences.getPort(this)
         activityScope.launch {
             val (ip, ssid) = withContext(Dispatchers.IO) {
                 Pair(
@@ -140,9 +164,9 @@ class MainActivity : Activity() {
             tvIpAddress.text = ip ?: getString(R.string.text_unknown_ip)
 
             val commandText = if (!ip.isNullOrBlank()) {
-                NetworkUtils.formatAdbConnectCommand(ip)
+                NetworkUtils.formatAdbConnectCommand(ip, configuredPort)
             } else {
-                "adb connect 192.168.x.x:5555"
+                "adb connect 192.168.x.x:$configuredPort"
             }
             tvCommand.text = commandText
         }
@@ -159,13 +183,13 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun refreshRootAndAdbStatus() {
+    private fun refreshRootAndAdbStatus(port: Int) {
         activityScope.launch {
             val rootAvailable = withContext(Dispatchers.IO) {
                 ShellUtils.isRootAvailable()
             }
             val adbActive = withContext(Dispatchers.IO) {
-                AdbController.isAdbWirelessActive()
+                AdbController.isAdbWirelessActive(port)
             }
 
             isRootGranted = rootAvailable
@@ -182,7 +206,7 @@ class MainActivity : Activity() {
 
             // 更新 ADB 状态与切换按钮
             if (adbActive) {
-                tvAdbStatus.text = getString(R.string.status_adb_running)
+                tvAdbStatus.text = getString(R.string.status_adb_running, port)
                 tvAdbStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_green))
                 btnToggleAdb.text = getString(R.string.btn_stop_adb)
                 btnToggleAdb.setBackgroundResource(R.drawable.bg_button_danger)
@@ -196,12 +220,14 @@ class MainActivity : Activity() {
     }
 
     private fun toggleAdbWireless() {
+        val configuredPort = AppPreferences.getPort(this)
+
         if (!isRootGranted && !isAdbActive) {
             Toast.makeText(this, getString(R.string.toast_root_required), Toast.LENGTH_LONG).show()
         }
 
         btnToggleAdb.isEnabled = false
-        btnToggleAdb.text = "正在执行操作..."
+        btnToggleAdb.text = getString(R.string.btn_operating)
 
         activityScope.launch {
             if (isAdbActive) {
@@ -211,9 +237,9 @@ class MainActivity : Activity() {
                     AdbWirelessService.start(this@MainActivity, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
                 }
             } else {
-                val success = AdbController.startWirelessAdb()
+                val success = AdbController.startWirelessAdb(configuredPort)
                 if (success) {
-                    Toast.makeText(this@MainActivity, getString(R.string.toast_adb_started), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, getString(R.string.toast_adb_started, configuredPort), Toast.LENGTH_SHORT).show()
                     AdbWirelessService.start(this@MainActivity, AdbWirelessService.ACTION_UPDATE_NOTIFICATION)
                 } else {
                     Toast.makeText(this@MainActivity, getString(R.string.toast_adb_start_failed), Toast.LENGTH_LONG).show()
@@ -227,12 +253,13 @@ class MainActivity : Activity() {
 
     private fun copyAdbCommand() {
         val ip = currentIp
+        val configuredPort = AppPreferences.getPort(this)
         if (ip.isNullOrBlank()) {
             Toast.makeText(this, getString(R.string.toast_no_ip), Toast.LENGTH_SHORT).show()
             return
         }
 
-        val command = NetworkUtils.formatAdbConnectCommand(ip)
+        val command = NetworkUtils.formatAdbConnectCommand(ip, configuredPort)
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         if (clipboard != null) {
             val clip = ClipData.newPlainText("ADB Command", command)
@@ -246,7 +273,7 @@ class MainActivity : Activity() {
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             startActivity(intent)
         } catch (_: Throwable) {
-            Toast.makeText(this, "无法打开系统无障碍设置页面", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.toast_cannot_open_accessibility), Toast.LENGTH_SHORT).show()
         }
     }
 }

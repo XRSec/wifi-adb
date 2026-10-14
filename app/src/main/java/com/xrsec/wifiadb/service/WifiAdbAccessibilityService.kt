@@ -7,6 +7,7 @@ import android.provider.Settings
 import android.text.TextUtils
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import com.xrsec.wifiadb.util.AppPreferences
 
 class WifiAdbAccessibilityService : AccessibilityService() {
 
@@ -35,14 +36,28 @@ class WifiAdbAccessibilityService : AccessibilityService() {
             return false
         }
 
-        // 仅处理系统核心弹窗包名，严禁拦截第三方应用或敏感界面
+        // 支持 AOSP 及国内主流定制系统 (MIUI/HyperOS, ColorOS, OriginOS, EMUI/HarmonyOS, OneUI) 的系统弹窗包名白名单
         private val ALLOWED_PACKAGES = setOf(
             "com.android.systemui",
             "com.google.android.systemui",
-            "android"
+            "android",
+            "com.android.settings",
+            // MIUI / HyperOS
+            "com.miui.securitycenter",
+            "com.miui.securityadd",
+            // ColorOS / Realme / OnePlus
+            "com.coloros.safecenter",
+            "com.oplus.safecenter",
+            // OriginOS / Vivo
+            "com.iqoo.secure",
+            "com.vivo.permissionmanager",
+            // EMUI / HarmonyOS
+            "com.huawei.systemmanager",
+            // Samsung OneUI
+            "com.samsung.android.app.cocktailbarservice"
         )
 
-        // 必须包含 ADB 调试特征关键字才判定为授权对话框
+        // 深度 ADB 授权特征关键字（包含多语言与厂商定制文案）
         private val ADB_DIALOG_KEYWORDS = arrayOf(
             "RSA",
             "指纹",
@@ -51,25 +66,32 @@ class WifiAdbAccessibilityService : AccessibilityService() {
             "USB debugging",
             "无线调试",
             "Wireless debugging",
-            "允许调试"
+            "允许调试",
+            "调试授权",
+            "计算机的 RSA",
+            "Allow USB debugging",
+            "Allow wireless debugging"
         )
 
-        // ADB 调试授权“一律允许”复选框文案
+        // “一律允许”复选框特征文案
         private val ALWAYS_ALLOW_KEYWORDS = arrayOf(
             "一律允许",
             "始终允许",
             "总是允许",
+            "不再询问",
             "Always allow",
             "always allow from this computer"
         )
 
-        // ADB 调试授权确认按钮文案
+        // 确定/允许确认按钮特征文案
         private val ALLOW_BUTTON_KEYWORDS = arrayOf(
             "允许",
             "确定",
             "OK",
             "Allow",
-            "ALLOW"
+            "ALLOW",
+            "总是允许",
+            "确定授权"
         )
 
         private const val MAX_TRAVERSE_DEPTH = 8
@@ -93,7 +115,12 @@ class WifiAdbAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
 
-        // 1. 严格校验来源包名，仅限系统 SystemUI 或 Android 框架弹窗
+        // 检查用户是否在设置中开启了“无障碍自动确认 ADB 授权”
+        if (!AppPreferences.isAutoConfirmAdbEnabled(this)) {
+            return
+        }
+
+        // 1. 严格校验来源包名白名单，绝不扫描第三方普通 App 界面
         val pkg = event.packageName?.toString() ?: ""
         if (!ALLOWED_PACKAGES.contains(pkg)) {
             return
@@ -101,12 +128,12 @@ class WifiAdbAccessibilityService : AccessibilityService() {
 
         val rootNode = rootInActiveWindow ?: return
         try {
-            // 2. 校验当前弹窗是否包含 ADB 调试特征关键字，防止误触普通系统权限或敏感弹窗
+            // 2. 深度特征校验：只有包含 ADB 调试/RSA 特征关键字才认定为授权对话框
             if (!isAdbAuthDialog(rootNode, 0)) {
                 return
             }
 
-            // 3. 确实为 ADB 授权弹窗后，再执行复选框勾选与允许按钮点击
+            // 3. 确实为 ADB 授权弹窗后，精准定位并勾选“一律允许”复选框，随后点击允许
             findAndCheckAlwaysAllow(rootNode, 0)
             findAndClickAllowButton(rootNode, 0)
         } finally {

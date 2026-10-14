@@ -1,0 +1,44 @@
+WiFi ADB Non-Commercial Public License
+Version 1.0, October 2026
+
+Copyright (c) 2026 XRSec. All rights reserved.
+
+==============================================================================
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+==============================================================================
+
+1. GRANT OF LICENSE
+Subject to the terms and conditions of this License, permission is hereby 
+granted to any person obtaining a copy of this software and associated 
+documentation files (the "Software"), to use, copy, modify, and inspect 
+the Software solely for PERSONAL, EDUCATIONAL, AND NON-COMMERCIAL PURPOSES.
+
+2. NON-COMMERCIAL RESTRICTION
+You may NOT use, copy, modify, merge, publish, distribute, sublicense, 
+and/or sell copies of the Software for any commercial purpose or pecuniary 
+gain. Specifically, the following are strictly prohibited:
+  a. Selling, leasing, renting, or monetizing the Software or any derivative work.
+  b. Bundling the Software into any commercial product, service, distribution,
+     or software suite.
+  c. Using the Software to generate revenue or within any commercial enterprise
+     without express prior written consent from the author.
+
+3. REDISTRIBUTION AND DERIVATIVE WORKS
+Any copy, distribution, or derivative work of the Software must retain this 
+entire LICENSE notice, copyright notice, and the following disclaimer in all 
+copies or substantial portions of the Software.
+
+4. DISCLAIMER OF WARRANTY AND LIMITATION OF LIABILITY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT.
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER, AUTHORS, OR CONTRIBUTORS BE LIABLE 
+FOR ANY CLAIM, DAMAGES, LOSSES, OR OTHER LIABILITY (INCLUDING BUT NOT LIMITED 
+TO LOSS OF DATA, DEVICE UNBOOTABILITY, HARDWARE BRICKING, UNAUTHORIZED ACCESS, 
+SECURITY BREACHES, SYSTEM COMPROMISE, OR SERVICE INTERRUPTION), WHETHER IN AN 
+ACTION OF CONTRACT, TORT, STRICT LIABILITY, OR OTHERWISE, ARISING FROM, OUT OF, 
+OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+USERS ASSUME ALL RESPONSIBILITIES AND RISKS FOR USING THIS APPLICATION, 
+INCLUDING ENABLING WIRELESS ADB NETWORK PORTS ON TARGET DEVICES.

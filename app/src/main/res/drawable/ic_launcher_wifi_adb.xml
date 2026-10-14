@@ -1,0 +1,76 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 背景圆形 -->
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M54,4 C81.61,4 104,26.39 104,54 C104,81.61 81.61,104 54,104 C26.39,104 4,81.61 4,54 C4,26.39 26.39,4 54,4 Z" />
+    
+    <!-- 外层 WiFi 信号弧线 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M30,34 C44.36,22 63.64,22 78,34" />
+    
+    <!-- 中层 WiFi 信号弧线 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:pathData="M38,44 C47.58,36 60.42,36 70,44" />
+    
+    <!-- 内层 WiFi 信号弧线 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M46,54 C50.8,50 57.2,50 62,54" />
+
+    <!-- 安卓机器人/终端头部轮廓 -->
+    <path
+        android:fillColor="#80CBC4"
+        android:pathData="M40,70 L68,70 C68,62.27 61.73,56 54,56 C46.27,56 40,62.27 40,70 Z" />
+
+    <!-- 机器人天线 (左 & 右) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#80CBC4"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M46,58 L42,52" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#80CBC4"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M62,58 L66,52" />
+
+    <!-- 机器人眼睛 (左 & 右) -->
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M47,64 A1.8,1.8 0 1,0 47,64.01" />
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M61,64 A1.8,1.8 0 1,0 61,64.01" />
+
+    <!-- ADB 文字标志基底 -->
+    <path
+        android:fillColor="#004D40"
+        android:pathData="M36,73 L72,73 L72,84 L36,84 Z" />
+
+    <!-- ADB 终端指示符点 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,78.5 C42,79.88 40.88,81 39.5,81 C38.12,81 37,79.88 37,78.5 C37,77.12 38.12,76 39.5,76 C40.88,76 42,77.12 42,78.5 Z" />
+
+    <!-- 调试信号脉冲点 -->
+    <path
+        android:fillColor="#80CBC4"
+        android:pathData="M54,61 C55.1,61 56,60.1 56,59 C56,57.9 55.1,57 54,57 C52.9,57 52,57.9 52,59 C52,60.1 52.9,61 54,61 Z" />
+</vector>

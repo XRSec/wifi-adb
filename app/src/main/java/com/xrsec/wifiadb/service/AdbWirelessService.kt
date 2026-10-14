@@ -14,6 +14,8 @@ import androidx.core.app.NotificationCompat
 import com.xrsec.wifiadb.MainActivity
 import com.xrsec.wifiadb.R
 import com.xrsec.wifiadb.core.AdbController
+import com.xrsec.wifiadb.util.AppPreferences
+import com.xrsec.wifiadb.util.LocaleHelper
 import com.xrsec.wifiadb.util.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +57,10 @@ class AdbWirelessService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var notificationManager: NotificationManager? = null
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -65,22 +71,20 @@ class AdbWirelessService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // 核心修复：收到 startForegroundService 请求后，第一行必须立即同步挂载基础前台通知，
-        // 杜绝异步 Root 指令耗时超过 5 秒导致 ForegroundServiceDidNotStartInTimeException 崩溃。
-        attachForeground(buildBaseNotification("WiFi ADB 服务运行中..."))
+        // 同步挂载基础前台通知，避免超时 ANR 崩溃
+        attachForeground(buildBaseNotification(getString(R.string.notification_running_base)))
 
         val action = intent?.action ?: ACTION_UPDATE_NOTIFICATION
+        val port = AppPreferences.getPort(this)
 
         serviceScope.launch {
-            // 所有耗时操作（Root 命令执行、Socket 探测、网络解析）一律在 Dispatchers.IO 调度
             withContext(Dispatchers.IO) {
                 when (action) {
-                    ACTION_START_WIRELESS -> AdbController.startWirelessAdb()
+                    ACTION_START_WIRELESS -> AdbController.startWirelessAdb(port)
                     ACTION_STOP_WIRELESS -> AdbController.stopWirelessAdb()
                     else -> {}
                 }
             }
-            // 异步获取最新状态后刷新前台通知内容
             refreshNotificationContentAsync()
         }
 
@@ -119,21 +123,22 @@ class AdbWirelessService : Service() {
     }
 
     private fun refreshNotificationContentAsync() {
+        val port = AppPreferences.getPort(this)
         serviceScope.launch {
             val (ip, isAdbActive) = withContext(Dispatchers.IO) {
                 val currentIp = NetworkUtils.getLocalIpAddress(this@AdbWirelessService)
-                val active = AdbController.isPortListening(AdbController.DEFAULT_PORT)
+                val active = AdbController.isPortListening(port)
                 Pair(currentIp, active)
             }
 
-            val updatedNotification = buildDetailedNotification(ip, isAdbActive)
+            val updatedNotification = buildDetailedNotification(ip, isAdbActive, port)
             notificationManager?.notify(NOTIFICATION_ID, updatedNotification)
         }
     }
 
     private fun buildBaseNotification(content: String): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_launcher_wifi_adb)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(content)
             .setContentIntent(createPendingIntent())
@@ -141,7 +146,7 @@ class AdbWirelessService : Service() {
             .build()
     }
 
-    private fun buildDetailedNotification(ip: String?, isAdbActive: Boolean): Notification {
+    private fun buildDetailedNotification(ip: String?, isAdbActive: Boolean, port: Int): Notification {
         val contentTitle = if (isAdbActive) {
             getString(R.string.notification_adb_active_title)
         } else {
@@ -149,15 +154,15 @@ class AdbWirelessService : Service() {
         }
 
         val contentText = if (isAdbActive && !ip.isNullOrBlank()) {
-            NetworkUtils.formatAdbConnectCommand(ip)
+            NetworkUtils.formatAdbConnectCommand(ip, port)
         } else if (isAdbActive) {
-            "端口 5555 正在监听，未获取到有效局域网 IP"
+            getString(R.string.notification_listening_no_ip, port)
         } else {
-            "无线调试已关闭，点击打开主界面"
+            getString(R.string.notification_stopped_hint)
         }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_launcher_wifi_adb)
             .setContentTitle(contentTitle)
             .setContentText(contentText)
             .setContentIntent(createPendingIntent())
