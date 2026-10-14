@@ -1,12 +1,18 @@
 package com.xrsec.wifiadb.core
 
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
+import dadb.AdbKeyPair
+import dadb.Dadb
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.net.InetSocketAddress
 import java.net.Socket
 
@@ -30,13 +36,39 @@ object AdbController {
         if (ShellUtils.isRootAvailable()) {
             return PermissionType.ROOT
         }
-        val hasSecure = context.checkCallingOrSelfPermission(
-            android.Manifest.permission.WRITE_SECURE_SETTINGS
-        ) == PackageManager.PERMISSION_GRANTED
-        if (hasSecure) {
+        if (hasWriteSecureSettings(context)) {
             return PermissionType.SECURE_SETTINGS
         }
         return PermissionType.NONE
+    }
+
+    /**
+     * 明确判定本应用是否具备 WRITE_SECURE_SETTINGS 权限
+     */
+    fun hasWriteSecureSettings(context: Context): Boolean {
+        return context.checkCallingOrSelfPermission(
+            android.Manifest.permission.WRITE_SECURE_SETTINGS
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    /**
+     * 判断当前系统是否具备 Root 权限
+     */
+    fun isRootAvailable(): Boolean {
+        return ShellUtils.isRootAvailable()
+    }
+
+    /**
+     * 通过 Root 权限为本 App 授予 WRITE_SECURE_SETTINGS 权限
+     */
+    suspend fun grantWriteSecureSettingsWithRoot(context: Context): Boolean = withContext(Dispatchers.IO) {
+        val pkg = context.packageName
+        val res = ShellUtils.execRoot("pm grant $pkg android.permission.WRITE_SECURE_SETTINGS")
+        if (res.isSuccess) {
+            hasWriteSecureSettings(context)
+        } else {
+            false
+        }
     }
 
     /**
@@ -45,10 +77,84 @@ object AdbController {
     suspend fun requestRootPermission(context: Context): Boolean = withContext(Dispatchers.IO) {
         val result = ShellUtils.execRoot("id")
         if (result.isSuccess && result.stdout.contains("uid=0")) {
-            val pkg = context.packageName
-            ShellUtils.execRoot("pm grant $pkg android.permission.WRITE_SECURE_SETTINGS")
-            true
+            grantWriteSecureSettingsWithRoot(context)
         } else {
+            false
+        }
+    }
+
+    /**
+     * 一键本地闭环提权：
+     * 利用 dadb 连接本地 127.0.0.1:port 发起 ADB 握手，触发系统授权弹窗，
+     * 配合 WifiAdbAccessibilityService 自动确认授权（或人工点击确认），
+     * 连通后执行 pm grant 授予 WRITE_SECURE_SETTINGS 权限。
+     */
+    suspend fun grantWriteSecureSettingsViaDadb(context: Context, port: Int = DEFAULT_PORT): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val privFile = File(context.filesDir, "adbkey")
+            val pubFile = File(context.filesDir, "adbkey.pub")
+            val keyPair = try {
+                if (!privFile.exists() || !pubFile.exists() || privFile.length() == 0L || pubFile.length() == 0L) {
+                    privFile.delete()
+                    pubFile.delete()
+                    AdbKeyPair.generate(privFile, pubFile, "app@wifi-adb")
+                }
+                AdbKeyPair.read(privFile, pubFile)
+            } catch (e: Throwable) {
+                if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+                // 密钥文件损坏或 0 字节时执行自愈重生成
+                privFile.delete()
+                pubFile.delete()
+                AdbKeyPair.generate(privFile, pubFile, "app@wifi-adb")
+                AdbKeyPair.read(privFile, pubFile)
+            }
+
+            // 超时配置：connectTimeout 5s，socketTimeout 30s 以留足系统弹窗识别与点击时间
+            val dadb = Dadb.create(
+                host = "127.0.0.1",
+                port = port,
+                keyPair = keyPair,
+                connectTimeout = 5000,
+                socketTimeout = 30000
+            )
+            dadb.use { client ->
+                val pkg = context.packageName
+                val response = client.shell("pm grant $pkg android.permission.WRITE_SECURE_SETTINGS")
+                if (response.exitCode == 0 || hasWriteSecureSettings(context)) {
+                    Result.success(Unit)
+                } else {
+                    val errMsg = response.allOutput.ifBlank { response.errorOutput }.ifBlank { "Exit code ${response.exitCode}" }
+                    Result.failure(Exception("pm grant failed: $errMsg"))
+                }
+            }
+        } catch (e: Throwable) {
+            if (e is kotlin.coroutines.cancellation.CancellationException) throw e
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 打开系统无线调试设置页面（Android 11+ / API 30+），低版本或失败时降级跳转至开发者选项
+     */
+    fun openWirelessDebuggingSettings(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val intent = Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS")
+                if (context !is android.app.Activity) {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+                return true
+            } catch (_: ActivityNotFoundException) {}
+        }
+        return try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+            if (context !is android.app.Activity) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            true
+        } catch (_: Throwable) {
             false
         }
     }

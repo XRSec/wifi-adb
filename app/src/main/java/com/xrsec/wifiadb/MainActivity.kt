@@ -5,7 +5,9 @@ import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
@@ -24,6 +26,7 @@ import com.xrsec.wifiadb.service.WifiStateReceiver
 import com.xrsec.wifiadb.util.AppPreferences
 import com.xrsec.wifiadb.util.LocaleHelper
 import com.xrsec.wifiadb.util.NetworkUtils
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -62,7 +65,6 @@ class MainActivity : Activity() {
     // 采用 SupervisorJob 防止子协程异常扩散导致生命周期协程作用域失效
     private val activityScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var currentIp: String? = null
-    private var currentPermType: AdbController.PermissionType = AdbController.PermissionType.NONE
     private var isUpdatingUi = false
 
     override fun attachBaseContext(newBase: Context) {
@@ -138,9 +140,12 @@ class MainActivity : Activity() {
             handleGrantPermission()
         }
 
-        // 卡片二：配置端口与开关
+        // 卡片二：配置（直达系统无线调试设置）与开关
         btnConfigAdb.setOnClickListener {
-            showPortConfigDialog()
+            val opened = AdbController.openWirelessDebuggingSettings(this)
+            if (!opened) {
+                Toast.makeText(this, getString(R.string.toast_cannot_open_settings), Toast.LENGTH_SHORT).show()
+            }
         }
 
         layoutCommandBox.setOnClickListener {
@@ -153,9 +158,9 @@ class MainActivity : Activity() {
             }
         }
 
-        // 卡片三：配置与无障碍开关
+        // 卡片三：配置（直达系统无障碍设置）与无障碍开关
         btnConfigA11y.setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
+            navigateToAccessibilitySettings()
         }
 
         switchA11y.setOnCheckedChangeListener { _, isChecked ->
@@ -177,72 +182,240 @@ class MainActivity : Activity() {
     }
 
     // ==========================================
-    // 卡片一：系统权限逻辑
+    // 卡片一：系统权限逻辑 (WRITE_SECURE_SETTINGS)
     // ==========================================
     private fun refreshPermissionStatus() {
         activityScope.launch {
-            val permType = withContext(Dispatchers.IO) {
-                AdbController.checkSystemPermission(this@MainActivity)
+            val hasSecure = withContext(Dispatchers.IO) {
+                AdbController.hasWriteSecureSettings(this@MainActivity)
             }
-            currentPermType = permType
+            val hasRoot = withContext(Dispatchers.IO) {
+                AdbController.isRootAvailable()
+            }
 
-            when (permType) {
-                AdbController.PermissionType.ROOT -> {
-                    tvPermissionStatus.text = getString(R.string.status_permission_root)
-                    tvPermissionStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_green))
-                    tvPermissionDesc.text = getString(R.string.desc_permission_granted)
-                    btnGrantPermission.text = getString(R.string.btn_permission_granted_root)
-                    btnGrantPermission.isEnabled = true
+            if (hasSecure || hasRoot) {
+                val statusText = if (hasRoot) {
+                    getString(R.string.status_permission_root)
+                } else {
+                    getString(R.string.status_permission_granted)
                 }
-                AdbController.PermissionType.SECURE_SETTINGS -> {
-                    tvPermissionStatus.text = getString(R.string.status_permission_secure)
-                    tvPermissionStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_green))
-                    tvPermissionDesc.text = getString(R.string.desc_permission_granted)
-                    btnGrantPermission.text = getString(R.string.btn_try_get_root)
-                    btnGrantPermission.isEnabled = true
-                }
-                AdbController.PermissionType.NONE -> {
-                    tvPermissionStatus.text = getString(R.string.status_permission_none)
-                    tvPermissionStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_red))
-                    tvPermissionDesc.text = getString(R.string.desc_permission_none)
-                    btnGrantPermission.text = getString(R.string.btn_grant_permission)
-                    btnGrantPermission.isEnabled = true
-                }
+                tvPermissionStatus.text = statusText
+                tvPermissionStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_green))
+                tvPermissionDesc.text = getString(R.string.desc_permission_granted)
+                btnGrantPermission.text = getString(R.string.btn_permission_granted)
+                btnGrantPermission.isEnabled = false
+            } else {
+                tvPermissionStatus.text = getString(R.string.status_permission_none)
+                tvPermissionStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_red))
+                tvPermissionDesc.text = getString(R.string.desc_permission_none)
+                btnGrantPermission.text = getString(R.string.btn_grant_permission)
+                btnGrantPermission.isEnabled = true
             }
         }
     }
 
     private fun handleGrantPermission() {
+        if (AdbController.hasWriteSecureSettings(this)) {
+            Toast.makeText(this, getString(R.string.toast_permission_already_granted), Toast.LENGTH_SHORT).show()
+            refreshAll()
+            return
+        }
+
         btnGrantPermission.isEnabled = false
         btnGrantPermission.text = getString(R.string.btn_checking_permission)
 
         activityScope.launch {
-            val rootSuccess = withContext(Dispatchers.IO) {
-                AdbController.requestRootPermission(this@MainActivity)
+            // 快速路径：若设备已具备 Root 权限，直接通过 Root 授权
+            val rootAvailable = withContext(Dispatchers.IO) {
+                AdbController.isRootAvailable()
             }
 
-            if (rootSuccess) {
-                Toast.makeText(this@MainActivity, getString(R.string.toast_root_success), Toast.LENGTH_SHORT).show()
-                refreshAll()
+            if (rootAvailable) {
+                val rootGranted = AdbController.grantWriteSecureSettingsWithRoot(this@MainActivity)
+                if (rootGranted) {
+                    Toast.makeText(this@MainActivity, getString(R.string.toast_root_grant_success), Toast.LENGTH_SHORT).show()
+                    refreshAll()
+                    return@launch
+                }
+            }
+
+            // 非 Root 路径：利用 dadb 本地握手闭环授权
+            btnGrantPermission.isEnabled = true
+            btnGrantPermission.text = getString(R.string.btn_grant_permission)
+
+            // 检查无障碍服务状态：若未开启，友好提示其先开启无障碍以享受全自动确认
+            val isA11yActive = WifiAdbAccessibilityService.isServiceEnabled(this@MainActivity)
+            if (!isA11yActive) {
+                showA11yAutoConfirmPrompt()
             } else {
-                val perm = withContext(Dispatchers.IO) {
-                    AdbController.checkSystemPermission(this@MainActivity)
-                }
-                if (perm == AdbController.PermissionType.SECURE_SETTINGS) {
-                    Toast.makeText(this@MainActivity, getString(R.string.toast_has_secure_settings), Toast.LENGTH_SHORT).show()
-                    refreshAll()
-                } else {
-                    showPermissionGuideDialog()
-                    refreshAll()
-                }
+                startDadbGrantFlow()
             }
         }
     }
 
-    private fun showPermissionGuideDialog() {
+    private fun isSafeForDialog(): Boolean {
+        return !isFinishing && (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || !isDestroyed)
+    }
+
+    private fun dismissDialogSafely(dialog: AlertDialog?) {
+        if (dialog != null && isSafeForDialog() && dialog.isShowing) {
+            try {
+                dialog.dismiss()
+            } catch (_: Throwable) {}
+        }
+    }
+
+    private fun showA11yAutoConfirmPrompt() {
+        if (!isSafeForDialog()) return
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.dialog_a11y_prompt_title)
+            .setMessage(R.string.dialog_a11y_prompt_msg)
+            .setPositiveButton(R.string.btn_go_to_a11y) { _, _ ->
+                navigateToAccessibilitySettings()
+            }
+            .setNeutralButton(R.string.btn_continue_manual) { _, _ ->
+                startDadbGrantFlow()
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    private fun startDadbGrantFlow() {
+        val configuredPort = AppPreferences.getPort(this)
+
+        activityScope.launch {
+            val isConfiguredPortListening = withContext(Dispatchers.IO) {
+                AdbController.isPortListening(configuredPort)
+            }
+            val is5555Listening = if (configuredPort != 5555) {
+                withContext(Dispatchers.IO) { AdbController.isPortListening(5555) }
+            } else isConfiguredPortListening
+
+            val activePort = when {
+                isConfiguredPortListening -> configuredPort
+                is5555Listening -> 5555
+                else -> null
+            }
+
+            if (activePort != null) {
+                // 已检测到活跃调试端口，直接发起 dadb 握手授权
+                executeDadbAuthorization(activePort)
+            } else {
+                // 尚未检测到标准端口监听，弹出无线调试端口输入与跳转引导对话框
+                showDadbPortInputDialog(configuredPort)
+            }
+        }
+    }
+
+    private fun showDadbPortInputDialog(defaultPort: Int) {
+        if (!isSafeForDialog()) return
+
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            setText(defaultPort.toString())
+            setSelection(text.length)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.dialog_dadb_port_title)
+            .setMessage(R.string.dialog_dadb_port_msg)
+            .setView(input)
+            .setNeutralButton(R.string.btn_open_wireless_settings, null)
+            .setPositiveButton(R.string.btn_start_auth, null)
+            .setNegativeButton(R.string.btn_cancel, null)
+            .create()
+
+        dialog.show()
+
+        // 重写 Neutral 按钮点击事件，使其仅启动跳转系统无线调试界面而不自动 dismiss() 对话框
+        dialog.getButton(DialogInterface.BUTTON_NEUTRAL)?.setOnClickListener {
+            val opened = AdbController.openWirelessDebuggingSettings(this)
+            if (!opened) {
+                Toast.makeText(this, getString(R.string.toast_cannot_open_settings), Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        dialog.getButton(DialogInterface.BUTTON_POSITIVE)?.setOnClickListener {
+            val port = input.text.toString().trim().toIntOrNull()
+            if (port == null || port < 1024 || port > 65535) {
+                Toast.makeText(this, getString(R.string.toast_port_invalid), Toast.LENGTH_SHORT).show()
+            } else {
+                dialog.dismiss()
+                executeDadbAuthorization(port)
+            }
+        }
+    }
+
+    private fun executeDadbAuthorization(port: Int) {
+        if (!isSafeForDialog()) return
+
+        val progressDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.btn_checking_permission)
+            .setMessage(getString(R.string.progress_dadb_auth, port))
+            .setCancelable(false)
+            .show()
+
+        activityScope.launch {
+            try {
+                val isListening = withContext(Dispatchers.IO) {
+                    AdbController.isPortListening(port, timeoutMs = 1500)
+                }
+                if (!isListening) {
+                    dismissDialogSafely(progressDialog)
+                    if (isSafeForDialog()) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.toast_port_not_listening, port),
+                            Toast.LENGTH_LONG
+                        ).show()
+                        showDadbPortInputDialog(port)
+                    }
+                    return@launch
+                }
+
+                val result = AdbController.grantWriteSecureSettingsViaDadb(this@MainActivity, port)
+                dismissDialogSafely(progressDialog)
+
+                if (result.isSuccess || AdbController.hasWriteSecureSettings(this@MainActivity)) {
+                    if (isSafeForDialog()) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.toast_dadb_grant_success),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    refreshAll()
+                } else {
+                    val ex = result.exceptionOrNull()
+                    if (isSafeForDialog()) {
+                        showPermissionGuideDialog(errorMessage = ex?.message)
+                    }
+                    refreshAll()
+                }
+            } catch (e: Throwable) {
+                if (e is CancellationException) throw e
+                dismissDialogSafely(progressDialog)
+                if (isSafeForDialog()) {
+                    showPermissionGuideDialog(errorMessage = e.message)
+                }
+                refreshAll()
+            }
+        }
+    }
+
+    private fun showPermissionGuideDialog(errorMessage: String? = null) {
+        if (!isSafeForDialog()) return
+
+        val message = if (!errorMessage.isNullOrBlank()) {
+            "${getString(R.string.dialog_permission_guide_msg)}\n\n(错误详情: $errorMessage)"
+        } else {
+            getString(R.string.dialog_permission_guide_msg)
+        }
+
         AlertDialog.Builder(this)
             .setTitle(R.string.dialog_permission_guide_title)
-            .setMessage(R.string.dialog_permission_guide_msg)
+            .setMessage(message)
             .setPositiveButton(R.string.btn_copy_grant_cmd) { _, _ ->
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                 val clip = ClipData.newPlainText("ADB Grant Command", getString(R.string.grant_cmd_text))
@@ -304,43 +477,18 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showPortConfigDialog() {
-        val currentPort = AppPreferences.getPort(this)
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER
-            setText(currentPort.toString())
-            setSelection(text.length)
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle(R.string.dialog_port_title)
-            .setView(input)
-            .setPositiveButton(R.string.btn_confirm) { _, _ ->
-                val portStr = input.text.toString().trim()
-                val newPort = portStr.toIntOrNull()
-                if (newPort == null || newPort < 1024 || newPort > 65535) {
-                    Toast.makeText(this, getString(R.string.toast_port_invalid), Toast.LENGTH_SHORT).show()
-                } else {
-                    AppPreferences.setPort(this, newPort)
-                    Toast.makeText(this, getString(R.string.toast_settings_saved), Toast.LENGTH_SHORT).show()
-                    refreshNetworkAndAdbInfo()
-                }
-            }
-            .setNegativeButton(R.string.btn_cancel, null)
-            .show()
-    }
-
     private fun toggleAdbWireless(enable: Boolean) {
         val configuredPort = AppPreferences.getPort(this)
 
-        if (currentPermType != AdbController.PermissionType.ROOT && enable) {
-            Toast.makeText(this, getString(R.string.toast_root_required), Toast.LENGTH_LONG).show()
-        }
-
-        // 异步操作期间临时禁用 Switch 控件，防止连续快速点击造成多 Root Shell 竞态
-        switchAdb.isEnabled = false
-
         activityScope.launch {
+            val hasRoot = withContext(Dispatchers.IO) { AdbController.isRootAvailable() }
+            if (!hasRoot && enable) {
+                Toast.makeText(this@MainActivity, getString(R.string.toast_root_required), Toast.LENGTH_LONG).show()
+            }
+
+            // 异步操作期间临时禁用 Switch 控件，防止连续快速点击造成多 Root Shell 竞态
+            switchAdb.isEnabled = false
+
             try {
                 if (enable) {
                     val success = AdbController.startWirelessAdb(configuredPort)
@@ -405,22 +553,23 @@ class MainActivity : Activity() {
 
         activityScope.launch {
             try {
-                val perm = withContext(Dispatchers.IO) {
-                    AdbController.checkSystemPermission(this@MainActivity)
+                val hasSecure = withContext(Dispatchers.IO) {
+                    AdbController.hasWriteSecureSettings(this@MainActivity)
+                }
+                val hasRoot = withContext(Dispatchers.IO) {
+                    AdbController.isRootAvailable()
                 }
 
-                if (perm == AdbController.PermissionType.ROOT || perm == AdbController.PermissionType.SECURE_SETTINGS) {
+                if (hasSecure || hasRoot) {
                     val success = AdbController.setAccessibilityServiceSilent(this@MainActivity, enable)
                     if (success) {
                         Toast.makeText(this@MainActivity, getString(R.string.toast_a11y_silent_success), Toast.LENGTH_SHORT).show()
                         refreshAccessibilityStatus()
                     } else {
                         navigateToAccessibilitySettings()
-                        // 跳转设置时不在此处同步刷新，完全交给 onResume() 恢复，杜绝 Switch 视觉瞬弹
                     }
                 } else {
                     navigateToAccessibilitySettings()
-                    // 跳转设置时不在此处同步刷新，完全交给 onResume() 恢复，杜绝 Switch 视觉瞬弹
                 }
             } finally {
                 switchA11y.isEnabled = true

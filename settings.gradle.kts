@@ -7,7 +7,7 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
         mavenCentral()
@@ -16,3 +16,9 @@ dependencyResolutionManagement {
 
 rootProject.name = "wifi-adb"
 include(":app")
+
+includeBuild("../dadb") {
+    dependencySubstitution {
+        substitute(module("dev.mobile:dadb")).using(project(":dadb"))
+    }
+}
