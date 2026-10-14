@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
@@ -20,6 +21,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.xrsec.wifiadb.core.AdbController
+import com.xrsec.wifiadb.core.StartupCoordinator
 import com.xrsec.wifiadb.service.AdbWirelessService
 import com.xrsec.wifiadb.service.WifiAdbAccessibilityService
 import com.xrsec.wifiadb.service.WifiStateReceiver
@@ -51,17 +53,27 @@ class MainActivity : Activity() {
     private lateinit var tvPermissionDesc: TextView
     private lateinit var btnGrantPermission: Button
 
-    // 卡片二：无线调试
+    // 卡片二：ADB 服务状态 (原无线调试)
     private lateinit var tvAdbStatus: TextView
     private lateinit var tvWifiName: TextView
     private lateinit var tvIpPort: TextView
-    private lateinit var btnConfigAdb: Button
+    private lateinit var switchStartupWirelessDebug: Switch
+    private lateinit var switchStartupRootWirelessDebug: Switch
+    private lateinit var switchStartupDisableTimeout: Switch
+    private lateinit var switchStartupRootDisableTimeout: Switch
+    private lateinit var etFixedPort: EditText
+    private lateinit var tvCurrentPort: TextView
+    private lateinit var switchStartupRootFixPort: Switch
+    private lateinit var switchStartupAdbFixPort: Switch
     private lateinit var switchAdb: Switch
+    private lateinit var btnOpenWirelessSettings: Button
 
     // 卡片三：无障碍服务
     private lateinit var tvA11yStatus: TextView
+    private lateinit var switchStartupAdbA11y: Switch
+    private lateinit var switchStartupRootA11y: Switch
     private lateinit var btnA11yDadbGrant: Button
-    private lateinit var btnConfigA11y: Button
+    private lateinit var btnOpenA11ySettings: Button
     private lateinit var switchA11y: Switch
 
     // 底部刷新
@@ -83,14 +95,21 @@ class MainActivity : Activity() {
         initViews()
         setupListeners()
         refreshAccessibilityStatus()
+        refreshPreferencesUi()
+
+        // 启动时异步执行自动化决策链
+        triggerStartupCoordinator()
     }
 
     override fun onResume() {
         super.onResume()
         // 仅注册统一内存回调，避免与系统广播接收器重复并发执行网络探测
-        WifiStateReceiver.listener = { _, _, _ ->
+        WifiStateReceiver.listener = { _, _, isConnected ->
             runOnUiThread {
                 refreshNetworkAndAdbInfo()
+                if (isConnected && NetworkUtils.isWifiConnected(this@MainActivity)) {
+                    triggerStartupCoordinator()
+                }
             }
         }
 
@@ -121,17 +140,27 @@ class MainActivity : Activity() {
         tvPermissionDesc = findViewById(R.id.tv_permission_desc)
         btnGrantPermission = findViewById(R.id.btn_grant_permission)
 
-        // 卡片二
+        // 卡片二：ADB 服务状态
         tvAdbStatus = findViewById(R.id.tv_adb_status)
         tvWifiName = findViewById(R.id.tv_wifi_name)
         tvIpPort = findViewById(R.id.tv_ip_port)
-        btnConfigAdb = findViewById(R.id.btn_config_adb)
+        switchStartupWirelessDebug = findViewById(R.id.switch_startup_wireless_debug)
+        switchStartupRootWirelessDebug = findViewById(R.id.switch_startup_root_wireless_debug)
+        switchStartupDisableTimeout = findViewById(R.id.switch_startup_disable_timeout)
+        switchStartupRootDisableTimeout = findViewById(R.id.switch_startup_root_disable_timeout)
+        etFixedPort = findViewById(R.id.et_fixed_port)
+        tvCurrentPort = findViewById(R.id.tv_current_port)
+        switchStartupRootFixPort = findViewById(R.id.switch_startup_root_fix_port)
+        switchStartupAdbFixPort = findViewById(R.id.switch_startup_adb_fix_port)
         switchAdb = findViewById(R.id.switch_adb)
+        btnOpenWirelessSettings = findViewById(R.id.btn_open_wireless_settings)
 
-        // 卡片三
+        // 卡片三：无障碍服务
         tvA11yStatus = findViewById(R.id.tv_a11y_status)
+        switchStartupAdbA11y = findViewById(R.id.switch_startup_adb_a11y)
+        switchStartupRootA11y = findViewById(R.id.switch_startup_root_a11y)
         btnA11yDadbGrant = findViewById(R.id.btn_a11y_dadb_grant)
-        btnConfigA11y = findViewById(R.id.btn_config_a11y)
+        btnOpenA11ySettings = findViewById(R.id.btn_open_a11y_settings)
         switchA11y = findViewById(R.id.switch_a11y)
 
         btnRefresh = findViewById(R.id.btn_refresh)
@@ -160,17 +189,90 @@ class MainActivity : Activity() {
             handleGrantPermission()
         }
 
-        // 卡片二：配置（直达系统无线调试设置）与开关
-        btnConfigAdb.setOnClickListener {
+        // 卡片二：启动自启开关
+        switchStartupWirelessDebug.setOnCheckedChangeListener { _, isChecked ->
+            if (!isUpdatingUi) {
+                AppPreferences.setStartupEnableWirelessDebug(this, isChecked)
+            }
+        }
+
+        // 卡片二：启动 Root 自启开关
+        switchStartupRootWirelessDebug.setOnCheckedChangeListener { _, isChecked ->
+            if (!isUpdatingUi) {
+                AppPreferences.setStartupRootEnableWirelessDebug(this, isChecked)
+            }
+        }
+
+        // 卡片二：启动 禁用授权超时开关
+        switchStartupDisableTimeout.setOnCheckedChangeListener { _, isChecked ->
+            if (!isUpdatingUi) {
+                AppPreferences.setStartupDisableAuthTimeout(this, isChecked)
+            }
+        }
+
+        // 卡片二：启动 Root 禁用授权超时开关
+        switchStartupRootDisableTimeout.setOnCheckedChangeListener { _, isChecked ->
+            if (!isUpdatingUi) {
+                AppPreferences.setStartupRootDisableAuthTimeout(this, isChecked)
+            }
+        }
+
+        // 卡片二：固定端口输入与保存
+        etFixedPort.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                saveFixedPortFromInput()
+                etFixedPort.clearFocus()
+                true
+            } else {
+                false
+            }
+        }
+        etFixedPort.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                saveFixedPortFromInput()
+            }
+        }
+
+        // 卡片二：启动 Root 固定端口开关
+        switchStartupRootFixPort.setOnCheckedChangeListener { _, isChecked ->
+            if (!isUpdatingUi) {
+                AppPreferences.setStartupRootFixPort(this, isChecked)
+            }
+        }
+
+        // 卡片二：启动 ADB 固定端口开关
+        switchStartupAdbFixPort.setOnCheckedChangeListener { _, isChecked ->
+            if (!isUpdatingUi) {
+                AppPreferences.setStartupAdbFixPort(this, isChecked)
+            }
+        }
+
+        // 卡片二：开发者设置无线调试开关
+        switchAdb.setOnCheckedChangeListener { _, isChecked ->
+            if (!isUpdatingUi) {
+                toggleAdbWireless(isChecked)
+            }
+        }
+
+        // 卡片二：跳转系统无线调试设置
+        btnOpenWirelessSettings.setOnClickListener {
             val opened = AdbController.openWirelessDebuggingSettings(this)
             if (!opened) {
                 Toast.makeText(this, getString(R.string.toast_cannot_open_settings), Toast.LENGTH_SHORT).show()
             }
         }
 
-        switchAdb.setOnCheckedChangeListener { _, isChecked ->
+        // 卡片三：启动 ADB 激活无障碍开关
+        switchStartupAdbA11y.setOnCheckedChangeListener { _, isChecked ->
             if (!isUpdatingUi) {
-                toggleAdbWireless(isChecked)
+                AppPreferences.setStartupAdbActivateA11y(this, isChecked)
+            }
+        }
+
+        // 卡片三：启动 Root 激活无障碍开关
+        switchStartupRootA11y.setOnCheckedChangeListener { _, isChecked ->
+            if (!isUpdatingUi) {
+                AppPreferences.setStartupRootActivateA11y(this, isChecked)
             }
         }
 
@@ -179,11 +281,12 @@ class MainActivity : Activity() {
             handleA11yDadbGrant()
         }
 
-        // 卡片三：配置（直达系统无障碍设置）与无障碍开关
-        btnConfigA11y.setOnClickListener {
+        // 卡片三：跳转系统无障碍设置
+        btnOpenA11ySettings.setOnClickListener {
             navigateToAccessibilitySettings()
         }
 
+        // 卡片三：无障碍静默开关
         switchA11y.setOnCheckedChangeListener { _, isChecked ->
             if (!isUpdatingUi) {
                 toggleAccessibilityService(isChecked)
@@ -192,7 +295,63 @@ class MainActivity : Activity() {
 
         btnRefresh.setOnClickListener {
             refreshAll()
+            triggerStartupCoordinator()
             Toast.makeText(this, getString(R.string.toast_status_refreshed), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun saveFixedPortFromInput() {
+        val text = etFixedPort.text.toString().trim()
+        val port = text.toIntOrNull()
+        if (port != null && port in 1024..65535) {
+            AppPreferences.setFixedPort(this, port)
+            refreshNetworkAndAdbInfo()
+        } else {
+            Toast.makeText(this, getString(R.string.toast_port_invalid), Toast.LENGTH_SHORT).show()
+            etFixedPort.setText(AppPreferences.getFixedPort(this).toString())
+        }
+    }
+
+    private fun refreshPreferencesUi() {
+        isUpdatingUi = true
+        switchStartupWirelessDebug.isChecked = AppPreferences.isStartupEnableWirelessDebug(this)
+        switchStartupRootWirelessDebug.isChecked = AppPreferences.isStartupRootEnableWirelessDebug(this)
+        switchStartupDisableTimeout.isChecked = AppPreferences.isStartupDisableAuthTimeout(this)
+        switchStartupRootDisableTimeout.isChecked = AppPreferences.isStartupRootDisableAuthTimeout(this)
+        if (!etFixedPort.hasFocus()) {
+            etFixedPort.setText(AppPreferences.getFixedPort(this).toString())
+        }
+        switchStartupRootFixPort.isChecked = AppPreferences.isStartupRootFixPort(this)
+        switchStartupAdbFixPort.isChecked = AppPreferences.isStartupAdbFixPort(this)
+        switchStartupAdbA11y.isChecked = AppPreferences.isStartupAdbActivateA11y(this)
+        switchStartupRootA11y.isChecked = AppPreferences.isStartupRootActivateA11y(this)
+        isUpdatingUi = false
+    }
+
+    private fun triggerStartupCoordinator() {
+        activityScope.launch {
+            StartupCoordinator.executeStartupFlow(this@MainActivity, object : StartupCoordinator.Listener {
+                override fun onStatusToast(resId: Int, vararg args: Any) {
+                    runOnUiThread {
+                        val msg = if (args.isEmpty()) getString(resId) else getString(resId, *args)
+                        Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onGuidePermissionNeeded() {
+                    runOnUiThread {
+                        if (isSafeForDialog()) {
+                            showPermissionGuideDialog()
+                        }
+                    }
+                }
+
+                override fun onStateChanged() {
+                    runOnUiThread {
+                        refreshAll()
+                    }
+                }
+            })
         }
     }
 
@@ -201,6 +360,7 @@ class MainActivity : Activity() {
         refreshPermissionStatus()
         refreshNetworkAndAdbInfo()
         refreshAccessibilityStatus()
+        refreshPreferencesUi()
     }
 
     private fun refreshDeviceInfo() {
@@ -313,7 +473,7 @@ class MainActivity : Activity() {
     }
 
     private fun startDadbGrantFlow() {
-        val configuredPort = AppPreferences.getPort(this)
+        val configuredPort = AppPreferences.getFixedPort(this)
 
         activityScope.launch {
             val isConfiguredPortListening = withContext(Dispatchers.IO) {
@@ -461,7 +621,7 @@ class MainActivity : Activity() {
     // 卡片二：无线调试逻辑
     // ==========================================
     private fun refreshNetworkAndAdbInfo() {
-        val configuredPort = AppPreferences.getPort(this)
+        val configuredPort = AppPreferences.getFixedPort(this)
 
         activityScope.launch {
             val (ip, ssid) = withContext(Dispatchers.IO) {
@@ -493,6 +653,8 @@ class MainActivity : Activity() {
                 displayPort
             )
 
+            tvCurrentPort.text = if (isAdbActive) displayPort else getString(R.string.status_adb_inactive)
+
             isUpdatingUi = true
             if (isAdbActive) {
                 tvAdbStatus.text = getString(R.string.status_adb_active)
@@ -508,7 +670,7 @@ class MainActivity : Activity() {
     }
 
     private fun toggleAdbWireless(enable: Boolean) {
-        val configuredPort = AppPreferences.getPort(this)
+        val configuredPort = AppPreferences.getFixedPort(this)
 
         activityScope.launch {
             // 异步操作期间临时禁用 Switch 控件，防止连续快速点击造成竞态
@@ -598,11 +760,22 @@ class MainActivity : Activity() {
                         Toast.makeText(this@MainActivity, getString(R.string.toast_a11y_silent_success), Toast.LENGTH_SHORT).show()
                         refreshAccessibilityStatus()
                     } else {
+                        isUpdatingUi = true
+                        switchA11y.isChecked = WifiAdbAccessibilityService.isServiceEnabled(this@MainActivity)
+                        isUpdatingUi = false
                         navigateToAccessibilitySettings()
                     }
                 } else {
+                    isUpdatingUi = true
+                    switchA11y.isChecked = WifiAdbAccessibilityService.isServiceEnabled(this@MainActivity)
+                    isUpdatingUi = false
                     navigateToAccessibilitySettings()
                 }
+            } catch (e: Throwable) {
+                if (e is CancellationException) throw e
+                isUpdatingUi = true
+                switchA11y.isChecked = WifiAdbAccessibilityService.isServiceEnabled(this@MainActivity)
+                isUpdatingUi = false
             } finally {
                 switchA11y.isEnabled = true
             }
@@ -624,7 +797,7 @@ class MainActivity : Activity() {
         activityScope.launch {
             try {
                 val isRoot = withContext(Dispatchers.IO) { AdbController.isRootAvailable() }
-                val configuredPort = AppPreferences.getPort(this@MainActivity)
+                val configuredPort = AppPreferences.getFixedPort(this@MainActivity)
                 val activePort = withContext(Dispatchers.IO) {
                     val dynamic = AdbController.getDynamicTlsPort()
                     when {

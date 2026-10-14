@@ -43,8 +43,17 @@
     <string name="btn_go_to_a11y">去开启无障碍</string>
     <string name="btn_continue_manual">直接授权</string>
 
-    <!-- 卡片二：无线调试 -->
-    <string name="card_adb_title">无线调试</string>
+    <!-- 卡片二：ADB 服务状态 (原无线调试) -->
+    <string name="card_adb_title">ADB 服务状态</string>
+    <string name="label_startup_wireless_debug">软件启动 开启无线调试</string>
+    <string name="label_startup_root_wireless_debug">软件启动 使用 Root 开启无线调试</string>
+    <string name="label_startup_disable_timeout">软件启动 禁用授权超时</string>
+    <string name="label_startup_root_disable_timeout">软件启动 使用 Root 禁用授权超时</string>
+    <string name="label_fixed_port_title">无线调试端口 固定：</string>
+    <string name="label_current_port_title">无线调试端口 当前：</string>
+    <string name="label_startup_root_fix_port">软件启动 使用 Root 固定无线调试端口</string>
+    <string name="label_startup_adb_fix_port">软件启动 使用 ADB 固定无线调试端口</string>
+    <string name="label_developer_wireless_debug">开发者设置 无线调试</string>
     <string name="status_adb_active">运行中</string>
     <string name="status_adb_inactive">未启动</string>
     <string name="label_ip_port">IP与端口: %1$s:%2$s</string>
@@ -62,6 +71,10 @@
 
     <!-- 卡片三：无障碍服务 -->
     <string name="card_accessibility_title">无障碍服务</string>
+    <string name="label_a11y_status_prefix">软件无障碍服务 激活状态</string>
+    <string name="label_startup_adb_a11y">软件启动 使用 ADB 激活无障碍服务</string>
+    <string name="label_startup_root_a11y">软件启动 使用 Root 激活无障碍服务</string>
+    <string name="btn_open_a11y_settings">无障碍设置</string>
     <string name="status_a11y_active">运行中</string>
     <string name="status_a11y_inactive">未开启</string>
     <string name="btn_system_settings">配置</string>
@@ -69,6 +82,13 @@
     <string name="accessibility_service_description">WiFi ADB 无障碍辅助服务，在连接新电脑调试时自动确认并允许调试授权弹窗。</string>
     <string name="toast_a11y_silent_success">无障碍服务已静默切换</string>
     <string name="toast_a11y_jump_settings">正在跳转至系统无障碍设置...</string>
+    <string name="toast_perm_grant_failed">必要权限授权失败</string>
+    <string name="toast_a11y_activate_failed">无障碍服务激活失败</string>
+    <string name="toast_fix_port_success">无线调试端口已固定为 %d</string>
+    <string name="toast_fix_port_failed">固定无线调试端口失败</string>
+    <string name="toast_timeout_disabled">已成功禁用授权超时</string>
+    <string name="toast_timeout_disable_failed">禁用授权超时失败</string>
+    <string name="toast_startup_flow_completed">启动自动化配置已完成</string>
 
     <!-- 底部操作 -->
     <string name="btn_refresh">刷新状态</string>

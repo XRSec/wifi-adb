@@ -173,7 +173,7 @@
         </LinearLayout>
 
         <!-- ============================================== -->
-        <!-- 卡片二：无线调试 (Wireless Debugging) -->
+        <!-- 卡片二：ADB 服务状态 (ADB Service Status) -->
         <!-- ============================================== -->
         <LinearLayout
             style="@style/CardStyle"
@@ -211,8 +211,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp">
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp">
 
                 <TextView
                     android:id="@+id/tv_wifi_name"
@@ -232,22 +232,146 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Action Area: Config & Switch -->
+            <!-- 分割线 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp"
+                android:background="@color/border_color" />
+
+            <!-- 软件启动 开启无线调试 开关 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingTop="12dp">
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
 
-                <Button
-                    android:id="@+id/btn_config_adb"
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_startup_wireless_debug"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Switch
+                    android:id="@+id/switch_startup_wireless_debug"
                     android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:background="@drawable/bg_button_outline"
-                    android:minWidth="64dp"
-                    android:text="@string/btn_config"
-                    android:textColor="@color/primary"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- 软件启动 使用 Root 开启无线调试 开关 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_startup_root_wireless_debug"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Switch
+                    android:id="@+id/switch_startup_root_wireless_debug"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- 软件启动 禁用授权超时 开关 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_startup_disable_timeout"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Switch
+                    android:id="@+id/switch_startup_disable_timeout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- 软件启动 使用 Root 禁用授权超时 开关 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_startup_root_disable_timeout"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Switch
+                    android:id="@+id/switch_startup_root_disable_timeout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- 分割线 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp"
+                android:background="@color/border_color" />
+
+            <!-- 无线调试端口 行：固定输入框 与 当前端口显示 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_fixed_port_title"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <EditText
+                    android:id="@+id/et_fixed_port"
+                    android:layout_width="76dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_input_field"
+                    android:gravity="center"
+                    android:imeOptions="actionDone"
+                    android:inputType="number"
+                    android:maxLength="5"
+                    android:paddingStart="4dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="4dp"
+                    android:paddingBottom="2dp"
+                    android:text="5555"
+                    android:textColor="@color/text_primary"
                     android:textSize="13sp" />
 
                 <View
@@ -255,12 +379,113 @@
                     android:layout_height="1dp"
                     android:layout_weight="1" />
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_current_port_title"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/tv_current_port"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="5555"
+                    android:textColor="@color/primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- 软件启动 使用 Root 固定无线调试端口 开关 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_startup_root_fix_port"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Switch
+                    android:id="@+id/switch_startup_root_fix_port"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- 软件启动 使用 ADB 固定无线调试端口 开关 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_startup_adb_fix_port"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Switch
+                    android:id="@+id/switch_startup_adb_fix_port"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- 分割线 -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp"
+                android:background="@color/border_color" />
+
+            <!-- 开发者设置 无线调试 开关 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="4dp"
+                android:paddingBottom="6dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_developer_wireless_debug"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
                 <Switch
                     android:id="@+id/switch_adb"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:switchMinWidth="56dp" />
             </LinearLayout>
+
+            <!-- 无线调试设置页面跳转 按钮 -->
+            <Button
+                android:id="@+id/btn_open_wireless_settings"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/bg_button_outline"
+                android:text="@string/btn_open_wireless_settings"
+                android:textColor="@color/primary"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <!-- ============================================== -->
@@ -300,19 +525,65 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
                 android:text="@string/desc_a11y_intro"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
 
-            <!-- Action Area: Config, dadb Shell Grant & Switch -->
+            <!-- 软件启动 使用 ADB 激活无障碍服务 开关 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingTop="4dp">
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_startup_adb_a11y"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Switch
+                    android:id="@+id/switch_startup_adb_a11y"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- 软件启动 使用 Root 激活无障碍服务 开关 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_startup_root_a11y"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp" />
+
+                <Switch
+                    android:id="@+id/switch_startup_root_a11y"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- Action Area: dadb Shell Grant, Open Settings & Switch -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="8dp">
 
                 <Button
                     android:id="@+id/btn_a11y_dadb_grant"
@@ -326,25 +597,21 @@
                     android:textSize="13sp" />
 
                 <Button
-                    android:id="@+id/btn_config_a11y"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/btn_open_a11y_settings"
+                    android:layout_width="0dp"
                     android:layout_height="36dp"
+                    android:layout_weight="1"
                     android:background="@drawable/bg_button_outline"
-                    android:minWidth="64dp"
-                    android:text="@string/btn_system_settings"
+                    android:text="@string/btn_open_a11y_settings"
                     android:textColor="@color/primary"
                     android:textSize="13sp" />
-
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
 
                 <Switch
                     android:id="@+id/switch_a11y"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:switchMinWidth="56dp" />
+                    android:layout_marginStart="8dp"
+                    android:switchMinWidth="48dp" />
             </LinearLayout>
         </LinearLayout>
 

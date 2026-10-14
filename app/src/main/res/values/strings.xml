@@ -43,8 +43,17 @@
     <string name="btn_go_to_a11y">Enable Accessibility</string>
     <string name="btn_continue_manual">Direct Grant</string>
 
-    <!-- Card 2: Wireless Debugging -->
-    <string name="card_adb_title">Wireless Debugging</string>
+    <!-- Card 2: ADB Service Status (formerly Wireless Debugging) -->
+    <string name="card_adb_title">ADB Service Status</string>
+    <string name="label_startup_wireless_debug">Startup: Enable Wireless Debugging</string>
+    <string name="label_startup_root_wireless_debug">Startup: Use Root to Enable Wireless Debugging</string>
+    <string name="label_startup_disable_timeout">Startup: Disable Auth Timeout</string>
+    <string name="label_startup_root_disable_timeout">Startup: Use Root to Disable Auth Timeout</string>
+    <string name="label_fixed_port_title">Fixed Port:</string>
+    <string name="label_current_port_title">Current Port:</string>
+    <string name="label_startup_root_fix_port">Startup: Use Root to Fix Port</string>
+    <string name="label_startup_adb_fix_port">Startup: Use ADB to Fix Port</string>
+    <string name="label_developer_wireless_debug">Developer Options: Wireless Debugging</string>
     <string name="status_adb_active">Running</string>
     <string name="status_adb_inactive">Stopped</string>
     <string name="label_ip_port">IP &amp; Port: %1$s:%2$s</string>
@@ -62,6 +71,10 @@
 
     <!-- Card 3: Accessibility Service -->
     <string name="card_accessibility_title">Accessibility Service</string>
+    <string name="label_a11y_status_prefix">Accessibility Service Status</string>
+    <string name="label_startup_adb_a11y">Startup: Use ADB to Activate Accessibility</string>
+    <string name="label_startup_root_a11y">Startup: Use Root to Activate Accessibility</string>
+    <string name="btn_open_a11y_settings">Accessibility Settings</string>
     <string name="status_a11y_active">Running</string>
     <string name="status_a11y_inactive">Disabled</string>
     <string name="btn_system_settings">Configure</string>
@@ -69,6 +82,13 @@
     <string name="accessibility_service_description">WiFi ADB Accessibility Service automatically confirms USB/Wireless debugging authorization prompts from authorized computers.</string>
     <string name="toast_a11y_silent_success">Accessibility service updated silently</string>
     <string name="toast_a11y_jump_settings">Redirecting to system accessibility settings...</string>
+    <string name="toast_perm_grant_failed">Required system permission grant failed</string>
+    <string name="toast_a11y_activate_failed">Accessibility service activation failed</string>
+    <string name="toast_fix_port_success">Wireless debugging port fixed to %d</string>
+    <string name="toast_fix_port_failed">Failed to fix wireless debugging port</string>
+    <string name="toast_timeout_disabled">Authorization timeout disabled successfully</string>
+    <string name="toast_timeout_disable_failed">Failed to disable authorization timeout</string>
+    <string name="toast_startup_flow_completed">Startup automation flow completed</string>
 
     <!-- Quick Actions -->
     <string name="btn_refresh">Refresh Status</string>

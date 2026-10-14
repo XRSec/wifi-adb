@@ -24,7 +24,8 @@ object NetworkUtils {
                 val name = iface.name.lowercase(Locale.US)
                 name.startsWith("wlan") || name.startsWith("ap") || name.startsWith("eth")
             }
-            for (iface in preferredInterfaces + interfaces) {
+            val otherInterfaces = interfaces.filterNot { preferredInterfaces.contains(it) }
+            for (iface in preferredInterfaces + otherInterfaces) {
                 if (iface.isLoopback || !iface.isUp) continue
                 val addrs = Collections.list(iface.inetAddresses)
                 for (addr in addrs) {
@@ -86,7 +87,28 @@ object NetworkUtils {
     }
 
     /**
-     * 判断当前是否已连接 WiFi 或网络可用。
+     * 判断当前是否已连接 WiFi 或局域网。
+     */
+    @Suppress("DEPRECATION")
+    fun isWifiConnected(context: Context): Boolean {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                val network = cm.activeNetwork ?: return false
+                val caps = cm.getNetworkCapabilities(network) ?: return false
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)
+            } else {
+                val info = cm.activeNetworkInfo ?: return false
+                info.isConnected && (info.type == ConnectivityManager.TYPE_WIFI || info.type == ConnectivityManager.TYPE_ETHERNET)
+            }
+        } catch (_: Throwable) {
+            false
+        }
+    }
+
+    /**
+     * 判断当前是否已连接网络。
      */
     @Suppress("DEPRECATION")
     fun isNetworkConnected(context: Context): Boolean {
