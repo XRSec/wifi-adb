@@ -72,6 +72,9 @@
     <!-- Card 3: Accessibility Service -->
     <string name="card_accessibility_title">Accessibility Service</string>
     <string name="label_a11y_status_prefix">Accessibility Service Status</string>
+    <string name="label_a11y_permission">Accessibility Permission</string>
+    <string name="btn_grant_a11y_permission">Grant Permission</string>
+    <string name="toast_a11y_permission_grant_success">Accessibility permission granted successfully</string>
     <string name="label_startup_adb_a11y">Startup: Use ADB to Activate Accessibility</string>
     <string name="label_startup_root_a11y">Startup: Use Root to Activate Accessibility</string>
     <string name="btn_open_a11y_settings">Accessibility Settings</string>

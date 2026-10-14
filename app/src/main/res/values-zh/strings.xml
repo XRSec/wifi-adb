@@ -72,6 +72,9 @@
     <!-- 卡片三：无障碍服务 -->
     <string name="card_accessibility_title">无障碍服务</string>
     <string name="label_a11y_status_prefix">软件无障碍服务 激活状态</string>
+    <string name="label_a11y_permission">软件无障碍权限</string>
+    <string name="btn_grant_a11y_permission">授权权限</string>
+    <string name="toast_a11y_permission_grant_success">无障碍权限授权成功</string>
     <string name="label_startup_adb_a11y">软件启动 使用 ADB 激活无障碍服务</string>
     <string name="label_startup_root_a11y">软件启动 使用 Root 激活无障碍服务</string>
     <string name="btn_open_a11y_settings">无障碍设置</string>

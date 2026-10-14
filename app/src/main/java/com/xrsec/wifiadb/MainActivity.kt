@@ -46,7 +46,6 @@ class MainActivity : Activity() {
     // 设备信息卡片
     private lateinit var tvDeviceModelSystem: TextView
     private lateinit var tvDeviceSerialAbi: TextView
-    private lateinit var btnCopyDeviceInfo: Button
 
     // 卡片一：系统权限
     private lateinit var tvPermissionStatus: TextView
@@ -70,6 +69,8 @@ class MainActivity : Activity() {
 
     // 卡片三：无障碍服务
     private lateinit var tvA11yStatus: TextView
+    private lateinit var tvA11yPermissionStatus: TextView
+    private lateinit var btnGrantA11yPermission: Button
     private lateinit var switchStartupAdbA11y: Switch
     private lateinit var switchStartupRootA11y: Switch
     private lateinit var btnA11yDadbGrant: Button
@@ -133,7 +134,6 @@ class MainActivity : Activity() {
         // 设备信息
         tvDeviceModelSystem = findViewById(R.id.tv_device_model_system)
         tvDeviceSerialAbi = findViewById(R.id.tv_device_serial_abi)
-        btnCopyDeviceInfo = findViewById(R.id.btn_copy_device_info)
 
         // 卡片一
         tvPermissionStatus = findViewById(R.id.tv_permission_status)
@@ -157,6 +157,8 @@ class MainActivity : Activity() {
 
         // 卡片三：无障碍服务
         tvA11yStatus = findViewById(R.id.tv_a11y_status)
+        tvA11yPermissionStatus = findViewById(R.id.tv_a11y_permission_status)
+        btnGrantA11yPermission = findViewById(R.id.btn_grant_a11y_permission)
         switchStartupAdbA11y = findViewById(R.id.switch_startup_adb_a11y)
         switchStartupRootA11y = findViewById(R.id.switch_startup_root_a11y)
         btnA11yDadbGrant = findViewById(R.id.btn_a11y_dadb_grant)
@@ -173,15 +175,6 @@ class MainActivity : Activity() {
 
         btnAbout.setOnClickListener {
             startActivity(Intent(this, AboutActivity::class.java))
-        }
-
-        // 设备信息复制
-        btnCopyDeviceInfo.setOnClickListener {
-            val info = DeviceInfoHelper.getDeviceInfo(this)
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-            val clip = ClipData.newPlainText("Device Info", info.getFormattedSummary())
-            clipboard?.setPrimaryClip(clip)
-            Toast.makeText(this, getString(R.string.toast_device_info_copied), Toast.LENGTH_SHORT).show()
         }
 
         // 卡片一：点击授权
@@ -274,6 +267,11 @@ class MainActivity : Activity() {
             if (!isUpdatingUi) {
                 AppPreferences.setStartupRootActivateA11y(this, isChecked)
             }
+        }
+
+        // 卡片三：授权权限按钮
+        btnGrantA11yPermission.setOnClickListener {
+            handleA11yPermissionGrant()
         }
 
         // 卡片三：dadb Shell 专属授权按钮
@@ -738,6 +736,17 @@ class MainActivity : Activity() {
             tvA11yStatus.setTextColor(ContextCompat.getColor(this, R.color.status_gray))
             switchA11y.isChecked = false
         }
+
+        val hasSecure = AdbController.hasWriteSecureSettings(this)
+        if (hasSecure) {
+            tvA11yPermissionStatus.text = getString(R.string.status_permission_granted)
+            tvA11yPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.status_green))
+            btnGrantA11yPermission.visibility = View.GONE
+        } else {
+            tvA11yPermissionStatus.text = getString(R.string.status_permission_none)
+            tvA11yPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.status_red))
+            btnGrantA11yPermission.visibility = View.VISIBLE
+        }
         isUpdatingUi = false
     }
 
@@ -829,6 +838,64 @@ class MainActivity : Activity() {
                 }
             } finally {
                 btnA11yDadbGrant.isEnabled = true
+            }
+        }
+    }
+
+    private fun handleA11yPermissionGrant() {
+        if (AdbController.hasWriteSecureSettings(this)) {
+            Toast.makeText(this, getString(R.string.toast_permission_already_granted), Toast.LENGTH_SHORT).show()
+            refreshAccessibilityStatus()
+            refreshPermissionStatus()
+            return
+        }
+
+        btnGrantA11yPermission.isEnabled = false
+        activityScope.launch {
+            try {
+                // 1. 优先尝试 Root
+                val rootAvailable = withContext(Dispatchers.IO) {
+                    AdbController.isRootAvailable()
+                }
+                if (rootAvailable) {
+                    val rootGranted = AdbController.grantWriteSecureSettingsWithRoot(this@MainActivity)
+                    if (rootGranted) {
+                        Toast.makeText(this@MainActivity, getString(R.string.toast_a11y_permission_grant_success), Toast.LENGTH_SHORT).show()
+                        refreshAccessibilityStatus()
+                        refreshPermissionStatus()
+                        return@launch
+                    }
+                }
+
+                // 2. 本地回环 Dadb 授权 (pm grant ... WRITE_SECURE_SETTINGS)
+                val configuredPort = AppPreferences.getFixedPort(this@MainActivity)
+                val activePort = withContext(Dispatchers.IO) {
+                    val dynamic = AdbController.getDynamicTlsPort()
+                    when {
+                        dynamic != null && dynamic > 0 && AdbController.isPortListening(dynamic) -> dynamic
+                        AdbController.isPortListening(configuredPort) -> configuredPort
+                        AdbController.isPortListening(5555) -> 5555
+                        else -> null
+                    }
+                }
+
+                if (activePort != null) {
+                    val result = AdbController.grantWriteSecureSettingsViaDadb(this@MainActivity, activePort)
+                    if (result.isSuccess || AdbController.hasWriteSecureSettings(this@MainActivity)) {
+                        Toast.makeText(this@MainActivity, getString(R.string.toast_a11y_permission_grant_success), Toast.LENGTH_SHORT).show()
+                        refreshAccessibilityStatus()
+                        refreshPermissionStatus()
+                    } else {
+                        val ex = result.exceptionOrNull()
+                        if (isSafeForDialog()) {
+                            showPermissionGuideDialog(errorMessage = ex?.message)
+                        }
+                    }
+                } else {
+                    showDadbPortInputDialog(configuredPort)
+                }
+            } finally {
+                btnGrantA11yPermission.isEnabled = true
             }
         }
     }
