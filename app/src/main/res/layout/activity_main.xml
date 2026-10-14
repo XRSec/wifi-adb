@@ -467,6 +467,59 @@
         </LinearLayout>
 
         <!-- ============================================== -->
+        <!-- 卡片：无障碍权限 (Accessibility Permission) -->
+        <!-- ============================================== -->
+        <LinearLayout
+            style="@style/CardStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/SectionTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:paddingBottom="0dp"
+                    android:text="@string/card_a11y_permission_title" />
+
+                <TextView
+                    android:id="@+id/tv_a11y_permission_status"
+                    style="@style/ValueText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/status_permission_none"
+                    android:textColor="@color/status_red" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_a11y_permission_desc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="8dp"
+                android:paddingBottom="12dp"
+                android:text="@string/desc_a11y_permission_none"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btn_grant_a11y_permission"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_button_outline"
+                android:text="@string/btn_grant_a11y_permission"
+                android:textColor="@color/primary"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- ============================================== -->
         <!-- 卡片三：无障碍服务 (Accessibility Service) -->
         <!-- ============================================== -->
         <LinearLayout
@@ -508,47 +561,6 @@
                 android:text="@string/desc_a11y_intro"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
-
-            <!-- 软件无障碍权限状态与授权按钮 -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/label_a11y_permission"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/tv_a11y_permission_status"
-                    style="@style/ValueText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/status_permission_none"
-                    android:textColor="@color/status_red" />
-
-                <Button
-                    android:id="@+id/btn_grant_a11y_permission"
-                    style="?android:attr/borderlessButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_button_outline"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:text="@string/btn_grant_a11y_permission"
-                    android:textColor="@color/primary"
-                    android:textSize="12sp" />
-            </LinearLayout>
 
             <!-- 软件启动 使用 ADB 激活无障碍服务 开关 -->
             <LinearLayout

@@ -67,10 +67,13 @@ class MainActivity : Activity() {
     private lateinit var switchAdb: Switch
     private lateinit var btnOpenWirelessSettings: Button
 
+    // 卡片：无障碍权限
+    private lateinit var tvA11yPermissionStatus: TextView
+    private lateinit var tvA11yPermissionDesc: TextView
+    private lateinit var btnGrantA11yPermission: Button
+
     // 卡片三：无障碍服务
     private lateinit var tvA11yStatus: TextView
-    private lateinit var tvA11yPermissionStatus: TextView
-    private lateinit var btnGrantA11yPermission: Button
     private lateinit var switchStartupAdbA11y: Switch
     private lateinit var switchStartupRootA11y: Switch
     private lateinit var btnA11yDadbGrant: Button
@@ -155,10 +158,13 @@ class MainActivity : Activity() {
         switchAdb = findViewById(R.id.switch_adb)
         btnOpenWirelessSettings = findViewById(R.id.btn_open_wireless_settings)
 
+        // 卡片：无障碍权限
+        tvA11yPermissionStatus = findViewById(R.id.tv_a11y_permission_status)
+        tvA11yPermissionDesc = findViewById(R.id.tv_a11y_permission_desc)
+        btnGrantA11yPermission = findViewById(R.id.btn_grant_a11y_permission)
+
         // 卡片三：无障碍服务
         tvA11yStatus = findViewById(R.id.tv_a11y_status)
-        tvA11yPermissionStatus = findViewById(R.id.tv_a11y_permission_status)
-        btnGrantA11yPermission = findViewById(R.id.btn_grant_a11y_permission)
         switchStartupAdbA11y = findViewById(R.id.switch_startup_adb_a11y)
         switchStartupRootA11y = findViewById(R.id.switch_startup_root_a11y)
         btnA11yDadbGrant = findViewById(R.id.btn_a11y_dadb_grant)
@@ -741,10 +747,12 @@ class MainActivity : Activity() {
         if (hasSecure) {
             tvA11yPermissionStatus.text = getString(R.string.status_permission_granted)
             tvA11yPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.status_green))
+            tvA11yPermissionDesc.text = getString(R.string.desc_a11y_permission_granted)
             btnGrantA11yPermission.visibility = View.GONE
         } else {
             tvA11yPermissionStatus.text = getString(R.string.status_permission_none)
             tvA11yPermissionStatus.setTextColor(ContextCompat.getColor(this, R.color.status_red))
+            tvA11yPermissionDesc.text = getString(R.string.desc_a11y_permission_none)
             btnGrantA11yPermission.visibility = View.VISIBLE
         }
         isUpdatingUi = false
