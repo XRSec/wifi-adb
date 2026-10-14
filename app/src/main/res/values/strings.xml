@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">WiFi ADB</string>
+    <string name="app_subtitle">Android 4.4+ 无线调试管理</string>
+
+    <!-- 网络状态 -->
+    <string name="section_network_title">当前网络环境</string>
+    <string name="label_wifi_ssid">WiFi 名称 (SSID):</string>
+    <string name="label_device_ip">设备 IP 地址:</string>
+    <string name="text_not_connected">未连接 WiFi</string>
+    <string name="text_unknown_ip">--.--.--.--</string>
+
+    <!-- ADB 状态 -->
+    <string name="section_adb_title">无线调试 (Port 5555)</string>
+    <string name="label_adb_status">调试服务状态:</string>
+    <string name="status_adb_running">5555 端口已开启 (正在监听)</string>
+    <string name="status_adb_stopped">已关闭 (USB 模式)</string>
+    <string name="label_root_status">Root 权限:</string>
+    <string name="status_root_granted">已获取 Root 权限</string>
+    <string name="status_root_denied">未检测到 Root 权限</string>
+    <string name="btn_start_adb">开启无线调试 (5555)</string>
+    <string name="btn_stop_adb">关闭无线调试</string>
+    <string name="label_connect_command">连接命令:</string>
+    <string name="btn_copy_command">复制命令</string>
+    <string name="toast_copied">已复制连接命令到剪贴板</string>
+    <string name="toast_no_ip">当前未连接有效网络，无法生成连接命令</string>
+    <string name="toast_root_required">开启无线调试需要 Root 权限，请先授予 Root 权限</string>
+    <string name="toast_adb_started">无线调试已成功开启 (端口 5555)</string>
+    <string name="toast_adb_stopped">无线调试已关闭</string>
+    <string name="toast_adb_start_failed">开启无线调试失败，请检查 Root 授权</string>
+
+    <!-- 无障碍服务 -->
+    <string name="section_accessibility_title">无障碍授权助手</string>
+    <string name="label_accessibility_status">无障碍辅助状态:</string>
+    <string name="status_accessibility_enabled">已开启 (自动处理调试授权弹窗)</string>
+    <string name="status_accessibility_disabled">未开启</string>
+    <string name="btn_open_accessibility">前往开启无障碍服务</string>
+    <string name="accessibility_service_description">WiFi ADB 无障碍辅助服务，在连接新电脑调试时自动确认并允许调试授权弹窗。</string>
+
+    <!-- 操作与通知 -->
+    <string name="btn_refresh">刷新状态</string>
+    <string name="notification_channel_name">WiFi ADB 运行状态</string>
+    <string name="notification_channel_desc">展示无线调试当前运行状态与局域网连接指令</string>
+    <string name="notification_adb_active_title">WiFi ADB 调试已开启</string>
+    <string name="notification_adb_inactive_title">WiFi ADB 调试已关闭</string>
+</resources>
