@@ -318,57 +318,58 @@
                 android:layout_marginBottom="4dp"
                 android:background="@color/border_color" />
 
-            <!-- 无线调试端口 行：固定输入框 与 当前端口显示 -->
+            <!-- 无线调试端口 固定 行 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp">
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="@string/label_fixed_port_title"
                     android:textColor="@color/text_primary"
                     android:textSize="13sp" />
 
                 <EditText
                     android:id="@+id/et_fixed_port"
-                    android:layout_width="76dp"
+                    android:layout_width="84dp"
                     android:layout_height="32dp"
-                    android:layout_marginStart="4dp"
                     android:background="@drawable/bg_input_field"
                     android:gravity="center"
                     android:imeOptions="actionDone"
                     android:inputType="number"
                     android:maxLength="5"
-                    android:paddingStart="4dp"
-                    android:paddingTop="2dp"
-                    android:paddingEnd="4dp"
-                    android:paddingBottom="2dp"
                     android:text="5555"
                     android:textColor="@color/text_primary"
                     android:textSize="13sp" />
+            </LinearLayout>
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
+            <!-- 无线调试端口 当前 行 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
                     android:text="@string/label_current_port_title"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="@color/text_primary"
                     android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/tv_current_port"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
                     android:text="5555"
                     android:textColor="@color/primary"
                     android:textSize="13sp"

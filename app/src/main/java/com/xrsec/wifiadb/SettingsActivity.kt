@@ -36,9 +36,6 @@ class SettingsActivity : ComponentActivity() {
     private lateinit var rbLangZh: RadioButton
     private lateinit var rbLangEn: RadioButton
 
-    // 卡片二：端口设置
-    private lateinit var etPort: EditText
-
     // 卡片三：自动化设置
     private lateinit var cbBootStart: CheckBox
     private lateinit var cbAutoConfirmAdb: CheckBox
@@ -88,9 +85,6 @@ class SettingsActivity : ComponentActivity() {
         rbLangZh = findViewById(R.id.rb_lang_zh)
         rbLangEn = findViewById(R.id.rb_lang_en)
 
-        // 卡片二
-        etPort = findViewById(R.id.et_port)
-
         // 卡片三
         cbBootStart = findViewById(R.id.cb_boot_start)
         cbAutoConfirmAdb = findViewById(R.id.cb_auto_confirm_adb)
@@ -120,7 +114,6 @@ class SettingsActivity : ComponentActivity() {
             else -> rbLangSystem.isChecked = true
         }
 
-        etPort.setText(AppPreferences.getPort(this).toString())
         cbBootStart.isChecked = AppPreferences.isBootStartEnabled(this)
         cbAutoConfirmAdb.isChecked = AppPreferences.isAutoConfirmAdbEnabled(this)
         etAdbPassphrase.setText(AppPreferences.getAdbKeyPassphrase(this))
@@ -233,13 +226,6 @@ class SettingsActivity : ComponentActivity() {
     }
 
     private fun savePreferences() {
-        val portStr = etPort.text.toString().trim()
-        val port = portStr.toIntOrNull()
-        if (port == null || port < 1024 || port > 65535) {
-            Toast.makeText(this, getString(R.string.toast_port_invalid), Toast.LENGTH_SHORT).show()
-            return
-        }
-
         val previousLang = AppPreferences.getLanguage(this)
         val selectedLang = when (rgLanguage.checkedRadioButtonId) {
             R.id.rb_lang_zh -> AppPreferences.LANG_ZH
@@ -250,7 +236,6 @@ class SettingsActivity : ComponentActivity() {
         val newPassphrase = etAdbPassphrase.text.toString().trim()
         val currentPassphrase = AppPreferences.getAdbKeyPassphrase(this)
 
-        AppPreferences.setPort(this, port)
         AppPreferences.setBootStartEnabled(this, cbBootStart.isChecked)
         AppPreferences.setAutoConfirmAdbEnabled(this, cbAutoConfirmAdb.isChecked)
         AppPreferences.setLanguage(this, selectedLang)
