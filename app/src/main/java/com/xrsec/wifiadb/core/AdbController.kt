@@ -742,9 +742,16 @@ object AdbController {
         var matched = false
         for (i in 0 until 5) {
             delay(300)
-            if (isAdbWirelessActive(context, port) == targetState) {
-                matched = true
-                break
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (isWirelessDebuggingEnabled(context) == targetState || isAdbWirelessActive(context, port) == targetState) {
+                    matched = true
+                    break
+                }
+            } else {
+                if (isAdbWirelessActive(context, port) == targetState) {
+                    matched = true
+                    break
+                }
             }
         }
         matched

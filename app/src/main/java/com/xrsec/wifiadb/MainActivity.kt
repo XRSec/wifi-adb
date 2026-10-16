@@ -645,6 +645,14 @@ class MainActivity : Activity() {
                 Pair(info.isActive, portStr)
             }
 
+            val isWirelessSettingEnabled = withContext(Dispatchers.IO) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    AdbController.isWirelessDebuggingEnabled(this@MainActivity)
+                } else {
+                    isAdbActive
+                }
+            }
+
             tvWifiName.text = if (ssid.isNotBlank()) {
                 getString(R.string.label_wifi_name, ssid)
             } else {
@@ -663,12 +671,11 @@ class MainActivity : Activity() {
             if (isAdbActive) {
                 tvAdbStatus.text = getString(R.string.status_adb_active)
                 tvAdbStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_green))
-                switchAdb.isChecked = true
             } else {
                 tvAdbStatus.text = getString(R.string.status_adb_inactive)
                 tvAdbStatus.setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_gray))
-                switchAdb.isChecked = false
             }
+            switchAdb.isChecked = isWirelessSettingEnabled
             isUpdatingUi = false
         }
     }
@@ -712,11 +719,15 @@ class MainActivity : Activity() {
                     } else {
                         Toast.makeText(this@MainActivity, getString(R.string.toast_adb_stop_failed), Toast.LENGTH_SHORT).show()
                     }
-                    val currentActive = withContext(Dispatchers.IO) {
-                        AdbController.isAdbWirelessActive(this@MainActivity, configuredPort)
+                    val currentSetting = withContext(Dispatchers.IO) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            AdbController.isWirelessDebuggingEnabled(this@MainActivity)
+                        } else {
+                            AdbController.isAdbWirelessActive(this@MainActivity, configuredPort)
+                        }
                     }
                     isUpdatingUi = true
-                    switchAdb.isChecked = currentActive
+                    switchAdb.isChecked = currentSetting
                     isUpdatingUi = false
                 }
                 refreshNetworkAndAdbInfo()
