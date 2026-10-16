@@ -368,8 +368,10 @@
 
                 <TextView
                     android:id="@+id/tv_current_port"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="84dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/bg_port_display"
+                    android:gravity="center"
                     android:text="5555"
                     android:textColor="@color/primary"
                     android:textSize="13sp"
