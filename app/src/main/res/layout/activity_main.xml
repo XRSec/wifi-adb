@@ -608,42 +608,50 @@
                     android:layout_height="wrap_content" />
             </LinearLayout>
 
-            <!-- Action Area: dadb Shell Grant, Open Settings & Switch -->
+            <!-- 系统无障碍服务 开关 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingTop="8dp">
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp">
 
-                <Button
-                    android:id="@+id/btn_a11y_dadb_grant"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:layout_marginEnd="6dp"
-                    android:background="@drawable/bg_button_outline"
-                    android:minWidth="64dp"
-                    android:text="@string/btn_a11y_dadb_grant"
-                    android:textColor="@color/primary"
-                    android:textSize="13sp" />
-
-                <Button
-                    android:id="@+id/btn_open_a11y_settings"
+                <TextView
                     android:layout_width="0dp"
-                    android:layout_height="36dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_button_outline"
-                    android:text="@string/btn_open_a11y_settings"
-                    android:textColor="@color/primary"
+                    android:text="@string/label_system_a11y_switch"
+                    android:textColor="@color/text_primary"
                     android:textSize="13sp" />
 
                 <Switch
                     android:id="@+id/switch_a11y"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:switchMinWidth="48dp" />
+                    android:layout_height="wrap_content" />
             </LinearLayout>
+
+            <!-- dadb Shell 专属激活按钮 (未运行时显示) -->
+            <Button
+                android:id="@+id/btn_a11y_dadb_grant"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_button_outline"
+                android:text="@string/btn_a11y_dadb_grant"
+                android:textColor="@color/primary"
+                android:textSize="13sp" />
+
+            <!-- 无障碍设置 按钮 -->
+            <Button
+                android:id="@+id/btn_open_a11y_settings"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_button_outline"
+                android:text="@string/btn_open_a11y_settings"
+                android:textColor="@color/primary"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <!-- Quick Refresh -->
