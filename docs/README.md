@@ -15,7 +15,7 @@ A lightweight, standalone, high-compatibility Android application to enable and 
 
 | Home (Inactive) | Home (Active) | Settings (General) | Settings (Security & Keys) | About |
 | :---: | :---: | :---: | :---: | :---: |
-| <img src="./home1.jpg" width="180" alt="Home Inactive" /> | <img src="./home2.jpg" width="180" alt="Home Active" /> | <img src="./setting1.jpg" width="180" alt="Settings General" /> | <img src="./setting2.jpg" width="180" alt="Settings Keys" /> | <img src="./about.jpg" width="180" alt="About" /> |
+| <img src="./en/home1.jpg" width="180" alt="Home Inactive" /> | <img src="./en/home2.jpg" width="180" alt="Home Active" /> | <img src="./en/setting1.jpg" width="180" alt="Settings General" /> | <img src="./en/setting2.jpg" width="180" alt="Settings Keys" /> | <img src="./en/about.jpg" width="180" alt="About" /> |
 
 ---
 

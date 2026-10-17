@@ -15,7 +15,7 @@
 
 | 主页 (未连接) | 主页 (已连接) | 设置页面 (常用配置) | 设置页面 (密钥与高级) | 关于页面 |
 | :---: | :---: | :---: | :---: | :---: |
-| <img src="docs/home1.jpg" width="180" alt="主页未连接" /> | <img src="docs/home2.jpg" width="180" alt="主页已连接" /> | <img src="docs/setting1.jpg" width="180" alt="设置常用" /> | <img src="docs/setting2.jpg" width="180" alt="设置密钥" /> | <img src="docs/about.jpg" width="180" alt="关于" /> |
+| <img src="docs/zh/home1.jpg" width="180" alt="主页未连接" /> | <img src="docs/zh/home2.jpg" width="180" alt="主页已连接" /> | <img src="docs/zh/setting1.jpg" width="180" alt="设置常用" /> | <img src="docs/zh/setting2.jpg" width="180" alt="设置密钥" /> | <img src="docs/zh/about.jpg" width="180" alt="关于" /> |
 
 ---
 
