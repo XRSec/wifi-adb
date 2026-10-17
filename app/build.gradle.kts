@@ -39,6 +39,16 @@ android {
     buildFeatures {
         buildConfig = true
     }
+
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/LICENSE.md",
+                "META-INF/LICENSE-notice.md",
+                "META-INF/{AL2.0,LGPL2.1}"
+            )
+        }
+    }
 }
 
 dependencies {
@@ -46,6 +56,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-    implementation("dev.mobile:dadb")
+    implementation("dev.mobile:dadb:1.2.9")
     testImplementation("junit:junit:4.13.2")
 }

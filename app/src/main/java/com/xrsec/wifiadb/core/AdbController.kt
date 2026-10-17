@@ -801,8 +801,9 @@ object AdbController {
             if (!pubFile.exists() || !privFile.exists() || pubFile.length() == 0L || privFile.length() == 0L) {
                 regenerateAdbKey(context)
             }
-            val keyPair = getAdbKeyPair(context)
-            val digest = java.security.MessageDigest.getInstance("SHA-256").digest(keyPair.adbPublicKey())
+            getAdbKeyPair(context)
+            val pubBytes = if (pubFile.exists()) pubFile.readBytes() else ByteArray(0)
+            val digest = java.security.MessageDigest.getInstance("SHA-256").digest(pubBytes)
             digest.joinToString(":") { "%02X".format(it) }
         }.getOrDefault("SHA256:--:--:--")
     }
@@ -821,7 +822,11 @@ object AdbController {
 
         val tempFile = File.createTempFile("gen_adbkey_", ".tmp", context.cacheDir)
         try {
-            AdbKeyPair.generate(tempFile, pubFile, "app@wifi-adb")
+            AdbKeyPair.generate(tempFile, pubFile)
+            if (pubFile.exists()) {
+                val pubText = pubFile.readText(Charsets.UTF_8).replace("unknown@unknown", "app@wifi-adb")
+                pubFile.writeText(pubText, Charsets.UTF_8)
+            }
             val rawPrivBytes = tempFile.readBytes()
             val finalBytes = if (passphrase.isNotBlank()) {
                 KeyCryptoUtil.encrypt(rawPrivBytes, passphrase)
