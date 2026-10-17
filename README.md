@@ -3,8 +3,19 @@
 [![Platform](https://img.shields.io/badge/Platform-Android%204.4%2B%20(API%2019%2B)-blue.svg)](https://developer.android.com)
 [![License](https://img.shields.io/badge/License-Non--Commercial-red.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-XRSec%2Fwifi--adb-black.svg)](https://github.com/XRSec/wifi-adb)
+[![Release](https://img.shields.io/github/v/release/XRSec/wifi-adb?color=green)](https://github.com/XRSec/wifi-adb/releases)
+
+[English](README.md) | [简体中文](README_CN.md)
 
 A lightweight, standalone, high-compatibility Android application to enable and manage **Wireless ADB (TCP/IP)** without requiring USB cables or a PC host command after initial setup.
+
+---
+
+## Screenshots
+
+| Home (Inactive) | Home (Active) | Settings (General) | Settings (Security & Keys) | About |
+| :---: | :---: | :---: | :---: | :---: |
+| <img src="docs/home1.jpg" width="180" alt="Home Inactive" /> | <img src="docs/home2.jpg" width="180" alt="Home Active" /> | <img src="docs/setting1.jpg" width="180" alt="Settings General" /> | <img src="docs/setting2.jpg" width="180" alt="Settings Keys" /> | <img src="docs/about.jpg" width="180" alt="About" /> |
 
 ---
 

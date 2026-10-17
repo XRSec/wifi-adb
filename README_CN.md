@@ -3,8 +3,19 @@
 [![Platform](https://img.shields.io/badge/Platform-Android%204.4%2B%20(API%2019%2B)-blue.svg)](https://developer.android.com)
 [![License](https://img.shields.io/badge/License-Non--Commercial-red.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-XRSec%2Fwifi--adb-black.svg)](https://github.com/XRSec/wifi-adb)
+[![Release](https://img.shields.io/github/v/release/XRSec/wifi-adb?color=green)](https://github.com/XRSec/wifi-adb/releases)
+
+[简体中文](README_CN.md) | [English](README.md)
 
 一款轻量、极致兼容、完全独立的 Android 无线调试 (ADB over TCP/IP) 管理工具。无需电脑反复通过 USB 线敲击 `adb tcpip 5555`，直接在手机端一键切换无线调试模式。
+
+---
+
+## 界面截图 (Screenshots)
+
+| 主页 (未连接) | 主页 (已连接) | 设置页面 (常用配置) | 设置页面 (密钥与高级) | 关于页面 |
+| :---: | :---: | :---: | :---: | :---: |
+| <img src="docs/home1.jpg" width="180" alt="主页未连接" /> | <img src="docs/home2.jpg" width="180" alt="主页已连接" /> | <img src="docs/setting1.jpg" width="180" alt="设置常用" /> | <img src="docs/setting2.jpg" width="180" alt="设置密钥" /> | <img src="docs/about.jpg" width="180" alt="关于" /> |
 
 ---
 
